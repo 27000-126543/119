@@ -875,10 +875,242 @@ export const adminService = {
   }
 };
 
+export const returnService = {
+  async createReturnRequest(returnData: Partial<ReturnRequest>): Promise<{ success: boolean; returnRequest?: ReturnRequest; message: string }> {
+    console.log('[ApiService][Return] Creating return request:', returnData);
+    await simulateNetworkDelay();
+
+    try {
+      const returns = loadData<ReturnRequest>(STORAGE_KEYS.RETURNS);
+      
+      const now = new Date();
+      const deadline = new Date(now.getTime() + 72 * 60 * 60 * 1000);
+      
+      const newReturn: ReturnRequest = {
+        id: generateId('ret'),
+        orderId: returnData.orderId || '',
+        orderNo: returnData.orderNo || '',
+        productId: returnData.productId || '',
+        productName: returnData.productName || '',
+        productImage: returnData.productImage || '',
+        skuId: returnData.skuId || '',
+        skuSpec: returnData.skuSpec || '',
+        quantity: returnData.quantity || 1,
+        reason: returnData.reason || '',
+        description: returnData.description || '',
+        images: returnData.images || [],
+        buyerId: returnData.buyerId || '',
+        buyerName: returnData.buyerName || '',
+        sellerId: returnData.sellerId || '',
+        status: 'pending_seller',
+        statusText: '待卖家审核',
+        sellerDeadline: deadline.toISOString(),
+        refundAmount: returnData.refundAmount || 0,
+        returnOrderNo: '',
+        trackingNumber: '',
+        trackingCompany: '',
+        platformReviewNote: '',
+        createdAt: now.toISOString(),
+        approvedAt: '',
+        completedAt: ''
+      };
+
+      returns.push(newReturn);
+      saveData(STORAGE_KEYS.RETURNS, returns);
+
+      console.log('[ApiService][Return] Return request created successfully:', newReturn.id);
+      return { success: true, returnRequest: newReturn, message: '退货申请提交成功' };
+    } catch (error) {
+      console.error('[ApiService][Return] Create return request error:', error);
+      return { success: false, message: '提交失败，请稍后重试' };
+    }
+  },
+
+  async getReturnRequests(userId: string): Promise<{ success: boolean; returns: ReturnRequest[]; message: string }> {
+    console.log('[ApiService][Return] Getting return requests for user:', userId);
+    await simulateNetworkDelay();
+
+    try {
+      const returns = loadData<ReturnRequest>(STORAGE_KEYS.RETURNS);
+      const userReturns = returns.filter(r => r.buyerId === userId);
+      userReturns.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+      console.log('[ApiService][Return] Return requests retrieved:', userReturns.length);
+      return { success: true, returns: userReturns, message: '获取成功' };
+    } catch (error) {
+      console.error('[ApiService][Return] Get return requests error:', error);
+      return { success: false, returns: [], message: '获取失败，请稍后重试' };
+    }
+  },
+
+  async escalateToPlatform(returnId: string, note?: string): Promise<{ success: boolean; message: string }> {
+    console.log('[ApiService][Return] Escalating to platform:', returnId);
+    await simulateNetworkDelay();
+
+    try {
+      const returns = loadData<ReturnRequest>(STORAGE_KEYS.RETURNS);
+      const returnIndex = returns.findIndex(r => r.id === returnId);
+
+      if (returnIndex === -1) {
+        return { success: false, message: '退货申请不存在' };
+      }
+
+      returns[returnIndex].status = 'pending_platform';
+      returns[returnIndex].statusText = '待平台审核';
+      returns[returnIndex].platformReviewNote = note || '';
+      saveData(STORAGE_KEYS.RETURNS, returns);
+
+      console.log('[ApiService][Return] Return escalated to platform:', returnId);
+      return { success: true, message: '已升级到平台审核' };
+    } catch (error) {
+      console.error('[ApiService][Return] Escalate to platform error:', error);
+      return { success: false, message: '操作失败，请稍后重试' };
+    }
+  },
+
+  async approveReturn(returnId: string, isPlatform: boolean = false): Promise<{ success: boolean; returnRequest?: ReturnRequest; message: string }> {
+    console.log('[ApiService][Return] Approving return:', returnId, 'isPlatform:', isPlatform);
+    await simulateNetworkDelay();
+
+    try {
+      const returns = loadData<ReturnRequest>(STORAGE_KEYS.RETURNS);
+      const returnIndex = returns.findIndex(r => r.id === returnId);
+
+      if (returnIndex === -1) {
+        return { success: false, message: '退货申请不存在' };
+      }
+
+      const returnOrderNo = 'RTN' + Date.now();
+      const trackingNumber = 'SF' + Math.random().toString().substr(2, 10).toUpperCase();
+      
+      returns[returnIndex].status = 'approved';
+      returns[returnIndex].statusText = '审核通过';
+      returns[returnIndex].approvedAt = new Date().toISOString();
+      returns[returnIndex].returnOrderNo = returnOrderNo;
+      returns[returnIndex].trackingNumber = trackingNumber;
+      returns[returnIndex].trackingCompany = '顺丰速运';
+      saveData(STORAGE_KEYS.RETURNS, returns);
+
+      console.log('[ApiService][Return] Return approved:', returnId, 'tracking:', trackingNumber);
+      return { success: true, returnRequest: returns[returnIndex], message: '退货申请已通过，快递将上门取件' };
+    } catch (error) {
+      console.error('[ApiService][Return] Approve return error:', error);
+      return { success: false, message: '审核失败，请稍后重试' };
+    }
+  }
+};
+
+export const paymentService = {
+  async createPaymentOrder(paymentData: any): Promise<{ success: boolean; paymentOrder?: any; message: string }> {
+    console.log('[ApiService][Payment] Creating payment order:', paymentData);
+    await simulateNetworkDelay();
+
+    try {
+      const payments = loadData<any>(STORAGE_KEYS.PAYMENTS);
+      
+      const newPayment = {
+        id: generateId('pay'),
+        orderIds: paymentData.orderIds || [],
+        buyerId: paymentData.buyerId || '',
+        totalAmount: paymentData.totalAmount || 0,
+        currency: paymentData.currency || 'CNY',
+        paymentMethod: '',
+        status: 'pending',
+        statusText: '待支付',
+        createdAt: new Date().toISOString(),
+        paidAt: ''
+      };
+
+      payments.push(newPayment);
+      saveData(STORAGE_KEYS.PAYMENTS, payments);
+
+      console.log('[ApiService][Payment] Payment order created:', newPayment.id);
+      return { success: true, paymentOrder: newPayment, message: '支付订单创建成功' };
+    } catch (error) {
+      console.error('[ApiService][Payment] Create payment order error:', error);
+      return { success: false, message: '创建失败，请稍后重试' };
+    }
+  },
+
+  async processPayment(paymentId: string, paymentMethod: string): Promise<{ success: boolean; message: string }> {
+    console.log('[ApiService][Payment] Processing payment:', paymentId, 'method:', paymentMethod);
+    await simulateNetworkDelay();
+
+    try {
+      const payments = loadData<any>(STORAGE_KEYS.PAYMENTS);
+      const paymentIndex = payments.findIndex(p => p.id === paymentId);
+
+      if (paymentIndex === -1) {
+        return { success: false, message: '支付订单不存在' };
+      }
+
+      const successRate = 0.95;
+      const isSuccess = Math.random() < successRate;
+
+      if (!isSuccess) {
+        payments[paymentIndex].status = 'failed';
+        payments[paymentIndex].statusText = '支付失败';
+        saveData(STORAGE_KEYS.PAYMENTS, payments);
+        return { success: false, message: '支付失败，请重试' };
+      }
+
+      payments[paymentIndex].status = 'paid';
+      payments[paymentIndex].statusText = '支付成功';
+      payments[paymentIndex].paymentMethod = paymentMethod;
+      payments[paymentIndex].paidAt = new Date().toISOString();
+      saveData(STORAGE_KEYS.PAYMENTS, payments);
+
+      console.log('[ApiService][Payment] Payment successful:', paymentId);
+      return { success: true, message: '支付成功' };
+    } catch (error) {
+      console.error('[ApiService][Payment] Process payment error:', error);
+      return { success: false, message: '支付失败，请稍后重试' };
+    }
+  },
+
+  async settlePayment(orderId: string, commissionRate: number = 0.05): Promise<{ success: boolean; settlement?: any; message: string }> {
+    console.log('[ApiService][Payment] Settling payment for order:', orderId);
+    await simulateNetworkDelay();
+
+    try {
+      const orders = loadData<Order>(STORAGE_KEYS.ORDERS);
+      const order = orders.find(o => o.id === orderId);
+
+      if (!order) {
+        return { success: false, message: '订单不存在' };
+      }
+
+      const commissionAmount = Math.round(order.total * commissionRate * 100) / 100;
+      const sellerAmount = Math.round((order.total - commissionAmount) * 100) / 100;
+
+      const settlement = {
+        id: generateId('set'),
+        orderId,
+        orderNo: order.orderNo,
+        totalAmount: order.total,
+        commissionRate,
+        commissionAmount,
+        sellerAmount,
+        sellerId: order.items[0]?.sellerId || '',
+        status: 'completed',
+        createdAt: new Date().toISOString()
+      };
+
+      console.log('[ApiService][Payment] Settlement completed:', settlement);
+      return { success: true, settlement, message: '结算完成' };
+    } catch (error) {
+      console.error('[ApiService][Payment] Settle payment error:', error);
+      return { success: false, message: '结算失败，请稍后重试' };
+    }
+  }
+};
+
 export default {
   initMockData,
   userService,
   orderService,
   productService,
-  adminService
+  adminService,
+  returnService,
+  paymentService
 };

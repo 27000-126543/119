@@ -2,11 +2,11 @@ import { create } from 'zustand';
 import type { Order, ReturnRequest } from '@/types/order';
 import type { SplitOrderResult } from '@/types/warehouse';
 import { splitOrderByWarehouse, reserveStock } from '@/services/orderSplitEngine';
-import { apiService } from '@/services/apiService';
+import * as returnEngine from '@/services/returnEngine';
 import { useUserStore } from '@/store/useUserStore';
 import { useCartStore } from '@/store/useCartStore';
-import { calculateMemberLevel, calculateDiscount, calculatePoints } from '@/services/memberService';
-import type { CartItem } from '@/types/cart';
+import { calculateMemberLevel } from '@/services/memberService';
+import type { CartItem } from '@/types/order';
 
 interface OrderState {
   orders: Order[];
@@ -21,7 +21,7 @@ interface OrderState {
   getOrderDetail: (orderId: string) => Order | null;
   cancelOrder: (orderId: string) => Promise<boolean>;
   confirmReceipt: (orderId: string) => Promise<boolean>;
-  createReturnRequest: (orderId: string, productId: string, reason: string, description: string, images: string[]) => Promise<ReturnRequest | null>;
+  createReturnRequest: (orderId: string, orderNo: string, productId: string, productName: string, productImage: string, skuId: string, skuSpec: string, quantity: number, reason: string, description: string, images: string[], buyerId: string, buyerName: string, sellerId: string, refundAmount: number) => Promise<ReturnRequest | null>;
   getReturnRequests: () => ReturnRequest[];
   previewSplitOrder: (items: CartItem[], countryCode: string) => SplitOrderResult[];
   clearSplitResults: () => void;
@@ -253,46 +253,28 @@ export const useOrderStore = create<OrderState>((set, get) => ({
     }
   },
 
-  createReturnRequest: async (orderId, productId, reason, description, images) => {
+  createReturnRequest: async (orderId, orderNo, productId, productName, productImage, skuId, skuSpec, quantity, reason, description, images, buyerId, buyerName, sellerId, refundAmount) => {
     console.log('[OrderStore] Creating return request for order:', orderId);
     set({ isLoading: true, error: null });
 
     try {
-      const storedReturns = JSON.parse(localStorage.getItem('gb2c_returns') || '[]');
-      const storedOrders = JSON.parse(localStorage.getItem('gb2c_orders') || '[]');
-      const order = storedOrders.find((o: Order) => o.id === orderId);
-      
-      if (!order) {
-        throw new Error('订单不存在');
-      }
-
-      const orderItem = order.items.find((i: any) => i.productId === productId);
-      if (!orderItem) {
-        throw new Error('商品不存在');
-      }
-
-      const sellerDeadline = new Date();
-      sellerDeadline.setHours(sellerDeadline.getHours() + 72);
-
-      const returnRequest: ReturnRequest = {
-        id: `ret_${Date.now()}`,
+      const returnRequest = returnEngine.createReturnRequest(
         orderId,
-        orderNo: order.orderNo,
+        orderNo,
         productId,
-        productName: orderItem.productName,
-        productImage: orderItem.productImage,
+        productName,
+        productImage,
+        skuId,
+        skuSpec,
+        quantity,
         reason,
         description,
         images,
-        status: 'pending_seller',
-        sellerDeadline: sellerDeadline.toISOString(),
-        trackingNumber: '',
-        refundAmount: orderItem.price * orderItem.quantity,
-        createdAt: new Date().toISOString()
-      };
-
-      const updatedReturns = [...storedReturns, returnRequest];
-      localStorage.setItem('gb2c_returns', JSON.stringify(updatedReturns));
+        buyerId,
+        buyerName,
+        sellerId,
+        refundAmount
+      );
 
       set({ 
         returnRequests: [...get().returnRequests, returnRequest],

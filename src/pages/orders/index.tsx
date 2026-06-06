@@ -10,10 +10,10 @@ import Taro, { usePullDownRefresh } from '@tarojs/taro';
 import classnames from 'classnames';
 import styles from './index.module.scss';
 import OrderItem from '@/components/OrderItem';
-import { mockOrders, getOrdersByStatus } from '@/data/orders';
 import { useTranslation } from '@/store/useLocaleStore';
 import { useCartStore } from '@/store/useCartStore';
 import { useUserStore } from '@/store/useUserStore';
+import { useOrderStore } from '@/store/useOrderStore';
 import { formatPrice } from '@/utils/format';
 import type { Order } from '@/types/order';
 import type { CartItem } from '@/types/order';
@@ -41,6 +41,7 @@ const OrdersPage: React.FC = () => {
   } = useCartStore();
 
   const { isLoggedIn } = useUserStore();
+  const { confirmReceipt, createReturnRequest, isLoading: orderLoading, getOrders } = useOrderStore();
 
   useEffect(() => {
     console.log('[OrdersPage] Mounted, activeTab:', activeTab);
@@ -62,10 +63,12 @@ const OrdersPage: React.FC = () => {
   const loadOrders = () => {
     setLoading(true);
     try {
-      setOrders(getOrdersByStatus(orderStatus === 'all' ? undefined : orderStatus));
-      console.log('[OrdersPage] Orders loaded:', orders.length);
+      const result = getOrders(orderStatus === 'all' ? undefined : orderStatus);
+      setOrders(result);
+      console.log('[OrdersPage] Orders loaded:', result.length);
     } catch (e) {
       console.error('[OrdersPage] Load orders error:', e);
+      Taro.showToast({ title: '加载订单失败', icon: 'none' });
     } finally {
       setLoading(false);
     }
@@ -123,19 +126,28 @@ const OrdersPage: React.FC = () => {
     Taro.navigateTo({ url: '/pages/payment/index' });
   };
 
-  const handleConfirmReceive = (orderId: string) => {
+  const handleConfirmReceipt = async (orderId: string) => {
     Taro.showModal({
       title: '确认收货',
       content: '确认已收到商品？',
-      success: (res) => {
+      success: async (res) => {
         if (res.confirm) {
-          setOrders((prev) =>
-            prev.map((o) =>
-              o.id === orderId ? { ...o, status: 'completed', statusText: '已完成' } : o
-            )
-          );
-          Taro.showToast({ title: '已确认收货', icon: 'success' });
-          console.log('[OrdersPage] Order confirmed:', orderId);
+          setLoading(true);
+          try {
+            const success = await confirmReceipt(orderId);
+            if (success) {
+              loadOrders();
+              Taro.showToast({ title: '已确认收货', icon: 'success' });
+              console.log('[OrdersPage] Order confirmed:', orderId);
+            } else {
+              Taro.showToast({ title: '确认收货失败', icon: 'none' });
+            }
+          } catch (e) {
+            console.error('[OrdersPage] Confirm receipt error:', e);
+            Taro.showToast({ title: '确认收货失败', icon: 'none' });
+          } finally {
+            setLoading(false);
+          }
         }
       }
     });
@@ -164,9 +176,24 @@ const OrdersPage: React.FC = () => {
     Taro.navigateTo({ url: `/pages/payment/index?orderId=${orderId}` });
   };
 
-  const handleReturn = (orderId: string) => {
-    console.log('[OrdersPage] Return order:', orderId);
-    Taro.navigateTo({ url: `/pages/return/index?orderId=${orderId}` });
+  const handleApplyReturn = (order: Order) => {
+    if (order.status !== 'completed') {
+      Taro.showToast({ title: '订单未完成，无法申请退货', icon: 'none' });
+      return;
+    }
+    const firstItem = order.items[0];
+    const params = new URLSearchParams({
+      orderId: order.id,
+      productId: firstItem.productId,
+      productName: firstItem.productName,
+      productImage: firstItem.productImage,
+      price: String(firstItem.price),
+      quantity: String(firstItem.quantity),
+      skuId: firstItem.skuId,
+      skuSpec: firstItem.skuSpec
+    });
+    console.log('[OrdersPage] Apply return for order:', order.id);
+    Taro.navigateTo({ url: `/pages/return/index?${params.toString()}` });
   };
 
   const handleGoShopping = () => {
@@ -309,10 +336,10 @@ const OrdersPage: React.FC = () => {
               <OrderItem
                 key={order.id}
                 order={order}
-                onConfirmReceive={handleConfirmReceive}
+                onConfirmReceive={handleConfirmReceipt}
                 onCancel={handleCancelOrder}
                 onPay={handlePay}
-                onReturn={handleReturn}
+                onReturn={() => handleApplyReturn(order)}
               />
             ))}
             {loading && (

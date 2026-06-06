@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import type { User, MemberLevel } from '@/types/user';
 import { calculateMemberLevel, getMemberLevelConfig, generateMemberCoupons, getAvailableBenefits, calculateDiscount, calculatePoints, checkFreeReturnEligibility } from '@/services/memberService';
 import type { Coupon, MemberBenefit } from '@/types/user';
+import { userService } from '@/services/apiService';
+import { initMockData } from '@/services/apiService';
 
 interface UserState {
   user: User | null;
@@ -64,56 +66,27 @@ export const useUserStore = create<UserState>((set, get) => ({
     console.log('[UserStore] Login attempt:', phone);
     set({ isLoading: true, error: null });
     
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
     try {
-      const storedUsers = JSON.parse(localStorage.getItem('gb2c_users') || '[]');
-      let user = storedUsers.find((u: User) => u.phone === phone);
+      initMockData();
       
-      if (!user) {
-        const levelInfo = calculateMemberLevel(0);
-        user = {
-          id: `u_${Date.now()}`,
-          phone,
-          email: '',
-          avatar: 'https://picsum.photos/id/64/200/200',
-          nickname: `用户${phone.slice(-4)}`,
-          realname: '',
-          realnameStatus: 'not_submitted',
-          idCardNo: '',
-          idCardFront: '',
-          idCardBack: '',
-          language: 'zh',
-          currency: 'CNY',
-          country: 'CN',
-          memberLevel: levelInfo.level,
-          memberLevelText: levelInfo.config.name,
-          totalTradeAmount: 0,
-          nextLevelAmount: levelInfo.nextLevelAmount,
-          levelProgress: levelInfo.progress,
-          couponCount: levelInfo.config.couponCount,
-          freeReturnCount: levelInfo.config.freeReturnCount,
-          hasShop: false,
-          shopId: '',
-          shopName: '',
-          isAdmin: false,
-          createdAt: new Date().toISOString()
-        };
-        localStorage.setItem('gb2c_users', JSON.stringify([...storedUsers, user]));
+      const result = await userService.login(phone, password);
+      
+      if (!result.success || !result.user) {
+        throw new Error(result.message);
       }
 
-      const coupons = generateMemberCoupons(user.memberLevel);
-      const benefits = getAvailableBenefits(user.memberLevel);
+      const coupons = generateMemberCoupons(result.user.memberLevel);
+      const benefits = getAvailableBenefits(result.user.memberLevel);
       
       set({
-        user,
+        user: result.user,
         isLoggedIn: true,
         coupons,
         benefits,
         isLoading: false
       });
 
-      console.log('[UserStore] Login successful:', user.nickname);
+      console.log('[UserStore] Login successful:', result.user.nickname);
       return true;
     } catch (error: any) {
       console.error('[UserStore] Login failed:', error);
@@ -126,59 +99,27 @@ export const useUserStore = create<UserState>((set, get) => ({
     console.log('[UserStore] Register attempt:', phone, nickname);
     set({ isLoading: true, error: null });
     
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
     try {
-      const storedUsers = JSON.parse(localStorage.getItem('gb2c_users') || '[]');
-      const existingUser = storedUsers.find((u: User) => u.phone === phone);
+      initMockData();
       
-      if (existingUser) {
-        throw new Error('该手机号已注册');
+      const result = await userService.register(phone, password, nickname);
+      
+      if (!result.success || !result.user) {
+        throw new Error(result.message);
       }
 
-      const levelInfo = calculateMemberLevel(0);
-      const newUser: User = {
-        id: `u_${Date.now()}`,
-        phone,
-        email: '',
-        avatar: 'https://picsum.photos/id/64/200/200',
-        nickname,
-        realname: '',
-        realnameStatus: 'not_submitted',
-        idCardNo: '',
-        idCardFront: '',
-        idCardBack: '',
-        language: 'zh',
-        currency: 'CNY',
-        country: 'CN',
-        memberLevel: levelInfo.level,
-        memberLevelText: levelInfo.config.name,
-        totalTradeAmount: 0,
-        nextLevelAmount: levelInfo.nextLevelAmount,
-        levelProgress: levelInfo.progress,
-        couponCount: levelInfo.config.couponCount,
-        freeReturnCount: levelInfo.config.freeReturnCount,
-        hasShop: false,
-        shopId: '',
-        shopName: '',
-        isAdmin: false,
-        createdAt: new Date().toISOString()
-      };
-
-      localStorage.setItem('gb2c_users', JSON.stringify([...storedUsers, newUser]));
-
-      const coupons = generateMemberCoupons(newUser.memberLevel);
-      const benefits = getAvailableBenefits(newUser.memberLevel);
+      const coupons = generateMemberCoupons(result.user.memberLevel);
+      const benefits = getAvailableBenefits(result.user.memberLevel);
       
       set({
-        user: newUser,
+        user: result.user,
         isLoggedIn: true,
         coupons,
         benefits,
         isLoading: false
       });
 
-      console.log('[UserStore] Registration successful:', newUser.nickname);
+      console.log('[UserStore] Registration successful:', result.user.nickname);
       return true;
     } catch (error: any) {
       console.error('[UserStore] Registration failed:', error);
@@ -230,27 +171,17 @@ export const useUserStore = create<UserState>((set, get) => ({
     console.log('[UserStore] Submitting realname auth');
     set({ isLoading: true, error: null });
     
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
     try {
       const { user } = get();
       if (!user) {
         throw new Error('请先登录');
       }
 
-      const authRecord = {
-        id: `auth_${Date.now()}`,
-        userId: user.id,
-        name,
-        idCard,
-        idCardFront,
-        idCardBack,
-        status: 'pending',
-        submittedAt: new Date().toISOString()
-      };
-
-      const storedAuths = JSON.parse(localStorage.getItem('gb2c_realname_auth') || '[]');
-      localStorage.setItem('gb2c_realname_auth', JSON.stringify([...storedAuths, authRecord]));
+      const result = await userService.submitRealnameAuth(user.id, name, idCard, idCardFront, idCardBack);
+      
+      if (!result.success) {
+        throw new Error(result.message);
+      }
 
       set({
         user: {

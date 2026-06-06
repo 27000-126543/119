@@ -7,11 +7,13 @@ import {
   ScrollView,
   Input
 } from '@tarojs/components';
-import Taro from '@tarojs/taro';
+import Taro, { useRouter } from '@tarojs/taro';
 import classnames from 'classnames';
 import styles from './index.module.scss';
 import { useTranslation, formatPrice } from '@/store/useLocaleStore';
 import { useCartStore } from '@/store/useCartStore';
+import { useOrderStore } from '@/store/useOrderStore';
+import { useUserStore } from '@/store/useUserStore';
 import { getHotProducts } from '@/data/products';
 import type { CartItem } from '@/types/order';
 
@@ -33,8 +35,19 @@ interface ReturnProduct extends CartItem {
   selected: boolean;
 }
 
+const reasonMap: Record<string, string> = {
+  quality: '商品质量问题',
+  wrong: '发错货/漏发货',
+  size: '尺码/规格不符',
+  notlike: '不喜欢/不想要',
+  other: '其他原因'
+};
+
 const ReturnPage: React.FC = () => {
   useTranslation();
+  const router = useRouter();
+  const { createReturnRequest, isLoading } = useOrderStore();
+  const { user } = useUserStore();
   const cartItems = useCartStore((state) => state.getSelectedItems());
   const [products, setProducts] = useState<ReturnProduct[]>([]);
   const [selectedReason, setSelectedReason] = useState<string>('');
@@ -42,6 +55,9 @@ const ReturnPage: React.FC = () => {
   const [uploadImages, setUploadImages] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [showProgress, setShowProgress] = useState(false);
+  const [orderId, setOrderId] = useState('');
+  const [productId, setProductId] = useState('');
+  const [orderNo, setOrderNo] = useState('');
 
   const reasons: ReturnReason[] = [
     { id: 'quality', name: '商品质量问题', desc: '商品存在瑕疵、破损等质量问题', icon: '🔍' },
@@ -61,8 +77,32 @@ const ReturnPage: React.FC = () => {
 
   useEffect(() => {
     console.log('[ReturnPage] Mounted');
+    console.log('[ReturnPage] Router params:', router.params);
 
-    if (cartItems.length > 0) {
+    const { orderId: paramOrderId, productId: paramProductId, productName: paramProductName, orderNo: paramOrderNo, productImage: paramProductImage, price: paramPrice, quantity: paramQuantity, skuId: paramSkuId, skuSpec: paramSkuSpec, sellerId: paramSellerId } = router.params;
+
+    if (paramOrderId && paramProductId) {
+      setOrderId(paramOrderId);
+      setProductId(paramProductId);
+      setOrderNo(paramOrderNo || '');
+
+      const product: ReturnProduct = {
+        productId: paramProductId,
+        productName: paramProductName || '',
+        productImage: paramProductImage || '',
+        skuId: paramSkuId || `sku_${paramProductId}`,
+        skuSpec: paramSkuSpec || '',
+        price: paramPrice ? Number(paramPrice) : 0,
+        wholesalePrice: paramPrice ? Number(paramPrice) : 0,
+        quantity: paramQuantity ? Number(paramQuantity) : 1,
+        stock: 0,
+        sellerId: paramSellerId || 's001',
+        shopName: '全球优品专营店',
+        selected: true
+      };
+      setProducts([product]);
+      console.log('[ReturnPage] Product from router params:', product);
+    } else if (cartItems.length > 0) {
       const items: ReturnProduct[] = cartItems.map((item: CartItem, index: number) => ({
         ...item,
         selected: index === 0
@@ -88,7 +128,7 @@ const ReturnPage: React.FC = () => {
       setProducts(mockProducts);
       console.log('[ReturnPage] Mock products loaded:', mockProducts.length);
     }
-  }, [cartItems]);
+  }, [cartItems, router.params]);
 
   const handleProductSelect = (productId: string, skuId: string) => {
     console.log('[ReturnPage] Product select:', productId, skuId);
@@ -157,9 +197,13 @@ const ReturnPage: React.FC = () => {
       return;
     }
 
+    const product = selectedProducts[0];
+    const reason = reasonMap[selectedReason] || selectedReason;
+    const refundAmount = product.price * product.quantity;
+
     console.log('[ReturnPage] Submit clicked');
     console.log('[ReturnPage] Selected products:', selectedProducts.length);
-    console.log('[ReturnPage] Reason:', selectedReason);
+    console.log('[ReturnPage] Reason:', reason);
     console.log('[ReturnPage] Description:', description);
     console.log('[ReturnPage] Images:', uploadImages.length);
     console.log('[ReturnPage] Refund amount:', refundAmount);
@@ -168,17 +212,45 @@ const ReturnPage: React.FC = () => {
     Taro.showLoading({ title: '提交中...', mask: true });
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      if (!user) {
+        throw new Error('请先登录');
+      }
+
+      const result = await createReturnRequest(
+        orderId || product.productId,
+        orderNo || `ORD${Date.now()}`,
+        productId || product.productId,
+        product.productName,
+        product.productImage,
+        product.skuId,
+        product.skuSpec,
+        product.quantity,
+        reason,
+        description,
+        uploadImages,
+        user.id,
+        user.nickname,
+        product.sellerId,
+        refundAmount
+      );
+
+      if (!result) {
+        throw new Error('提交失败');
+      }
 
       console.log('[ReturnPage] Submission successful');
       Taro.hideLoading();
       Taro.showToast({ title: '提交成功', icon: 'success' });
 
       setShowProgress(true);
-    } catch (e) {
+
+      setTimeout(() => {
+        Taro.navigateBack();
+      }, 3000);
+    } catch (e: any) {
       console.error('[ReturnPage] Submit error:', e);
       Taro.hideLoading();
-      Taro.showToast({ title: '提交失败，请重试', icon: 'none' });
+      Taro.showToast({ title: e.message || '提交失败，请重试', icon: 'none' });
     } finally {
       setSubmitting(false);
     }
@@ -191,7 +263,7 @@ const ReturnPage: React.FC = () => {
   }, [products]);
 
   const allSelected = products.length > 0 && products.every(p => p.selected);
-  const canSubmit = products.filter(p => p.selected).length > 0 && selectedReason && !submitting;
+  const canSubmit = products.filter(p => p.selected).length > 0 && selectedReason && !submitting && !isLoading;
 
   return (
     <View className={styles.returnPage}>
@@ -200,7 +272,7 @@ const ReturnPage: React.FC = () => {
           <View className={styles.progressSection}>
             <View className={styles.progressHeader}>
               <Text className={styles.progressStatus}>退货进度</Text>
-              <Text className={styles.progressOrderNo}>订单号: ORD202401150001</Text>
+              <Text className={styles.progressOrderNo}>订单号: {orderNo || 'ORD202401150001'}</Text>
             </View>
             <View className={styles.progressTimeline}>
               {progressSteps.map((step, index) => (

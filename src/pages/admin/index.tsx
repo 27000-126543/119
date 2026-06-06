@@ -12,6 +12,9 @@ import styles from './index.module.scss';
 import { useTranslation, formatPrice } from '@/store/useLocaleStore';
 import { getHotProducts } from '@/data/products';
 import type { Product } from '@/types/product';
+import { adminService, initMockData } from '@/services/apiService';
+import { exportMonthlyReport } from '@/services/reportService';
+import type { DashboardStats } from '@/types/report';
 
 interface StatData {
   title: string;
@@ -47,6 +50,9 @@ const AdminPage: React.FC = () => {
   const t = useTranslation();
   const [selectedCountry, setSelectedCountry] = useState<string>('global');
   const [selectedTime, setSelectedTime] = useState<string>('30days');
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const countries = [
     { label: '全球', value: 'global' },
@@ -64,58 +70,6 @@ const AdminPage: React.FC = () => {
     { label: '今年', value: 'year' }
   ];
 
-  const stats: StatData[] = [
-    {
-      title: t('globalOrders'),
-      value: '128,456',
-      change: '+12.5%',
-      isUp: true,
-      icon: '📦',
-      iconClass: styles.statIconBlue
-    },
-    {
-      title: '总销售额',
-      value: formatPrice(2568900),
-      change: '+8.3%',
-      isUp: true,
-      icon: '💰',
-      iconClass: styles.statIconGreen
-    },
-    {
-      title: t('returnRate'),
-      value: '3.2%',
-      change: '-0.5%',
-      isUp: true,
-      icon: '↩️',
-      iconClass: styles.statIconOrange
-    },
-    {
-      title: t('complaintTime'),
-      value: '4.2h',
-      change: '-15.3%',
-      isUp: true,
-      icon: '⏱️',
-      iconClass: styles.statIconRed
-    }
-  ];
-
-  const categoryData: CategoryData[] = [
-    { name: '电子产品', nameEn: 'Electronics', sales: 856000, orders: 12500 },
-    { name: '服装配饰', nameEn: 'Fashion', sales: 625000, orders: 18300 },
-    { name: '家居用品', nameEn: 'Home', sales: 489000, orders: 9600 },
-    { name: '美妆护肤', nameEn: 'Beauty', sales: 412000, orders: 7800 },
-    { name: '食品饮料', nameEn: 'Food', sales: 356000, orders: 11200 },
-    { name: '运动户外', nameEn: 'Sports', sales: 289000, orders: 5400 }
-  ];
-
-  const sellerActivities: SellerActivity[] = [
-    { name: '张三', shopName: '全球优品专营店', orders: 1256, activity: 95 },
-    { name: '李四', shopName: '精品箱包旗舰店', orders: 987, activity: 88 },
-    { name: '王五', shopName: '数码之家', orders: 856, activity: 82 },
-    { name: '赵六', shopName: '美妆小铺', orders: 723, activity: 76 },
-    { name: '孙七', shopName: '户外装备店', orders: 612, activity: 68 }
-  ];
-
   const predictions: PredictionItem[] = [
     { rank: 1, product: getHotProducts()[0], score: 98.5, trend: '上升' },
     { rank: 2, product: getHotProducts()[1], score: 92.3, trend: '上升' },
@@ -124,41 +78,65 @@ const AdminPage: React.FC = () => {
     { rank: 5, product: getHotProducts()[4], score: 78.9, trend: '下降' }
   ];
 
-  useEffect(() => {
-    console.log('[AdminPage] Mounted, loading dashboard data...');
-    loadData();
-  }, []);
-
-  const loadData = useCallback(() => {
+  const loadDashboardStats = useCallback(async (country?: string) => {
+    setLoading(true);
     try {
-      console.log('[AdminPage] Dashboard data loaded successfully');
+      const result = await adminService.getDashboardStats(country);
+      if (result.success && result.stats) {
+        setStats(result.stats);
+        console.log('[AdminPage] Dashboard stats loaded successfully');
+      } else {
+        Taro.showToast({ title: result.message || '加载失败', icon: 'error' });
+      }
     } catch (e) {
       console.error('[AdminPage] Data load error:', e);
+      Taro.showToast({ title: '加载失败，请稍后重试', icon: 'error' });
+    } finally {
+      setLoading(false);
     }
   }, []);
 
+  useEffect(() => {
+    console.log('[AdminPage] Mounted, loading dashboard data...');
+    initMockData();
+    loadDashboardStats();
+  }, [loadDashboardStats]);
+
   const handleCountryChange = (e: any) => {
     const index = e.detail.value;
-    setSelectedCountry(countries[index].value);
-    console.log('[AdminPage] Country changed:', countries[index].value);
-    loadData();
+    const country = countries[index].value;
+    setSelectedCountry(country);
+    console.log('[AdminPage] Country changed:', country);
+    loadDashboardStats(country);
   };
 
   const handleTimeChange = (e: any) => {
     const index = e.detail.value;
     setSelectedTime(timeRanges[index].value);
     console.log('[AdminPage] Time range changed:', timeRanges[index].value);
-    loadData();
+    loadDashboardStats(selectedCountry);
   };
 
-  const handleExport = () => {
-    console.log('[AdminPage] Export report clicked');
+  const handleExportReport = async (type: 'full' | 'country' | 'seller' | 'return' | 'logistics') => {
+    setExporting(true);
     Taro.showLoading({ title: '正在导出...' });
-    setTimeout(() => {
+    try {
+      const { csvContent, filename } = await exportMonthlyReport(new Date().toISOString().slice(0, 7), type);
+      const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      link.click();
       Taro.hideLoading();
       Taro.showToast({ title: '导出成功', icon: 'success' });
-      console.log('[AdminPage] Report exported successfully');
-    }, 1500);
+      console.log('[AdminPage] Report exported successfully:', filename);
+    } catch (e) {
+      console.error('[AdminPage] Export error:', e);
+      Taro.hideLoading();
+      Taro.showToast({ title: '导出失败，请稍后重试', icon: 'error' });
+    } finally {
+      setExporting(false);
+    }
   };
 
   const handleStatClick = (stat: StatData) => {
@@ -185,8 +163,57 @@ const AdminPage: React.FC = () => {
     return styles.rankOther;
   };
 
-  const maxSales = Math.max(...categoryData.map(c => c.sales));
-  const maxOrders = Math.max(...categoryData.map(c => c.orders));
+  const statData: StatData[] = stats ? [
+    {
+      title: t('globalOrders'),
+      value: stats.totalOrders.toLocaleString(),
+      change: '+12.5%',
+      isUp: true,
+      icon: '📦',
+      iconClass: styles.statIconBlue
+    },
+    {
+      title: '总销售额',
+      value: formatPrice(stats.totalRevenue),
+      change: '+8.3%',
+      isUp: true,
+      icon: '💰',
+      iconClass: styles.statIconGreen
+    },
+    {
+      title: t('returnRate'),
+      value: `${stats.returnRate}%`,
+      change: '-0.5%',
+      isUp: true,
+      icon: '↩️',
+      iconClass: styles.statIconOrange
+    },
+    {
+      title: t('complaintTime'),
+      value: `${stats.avgComplaintResolutionHours}h`,
+      change: '-15.3%',
+      isUp: true,
+      icon: '⏱️',
+      iconClass: styles.statIconRed
+    }
+  ] : [];
+
+  const categoryData: CategoryData[] = stats?.categorySales.map(cs => ({
+    name: cs.category,
+    nameEn: cs.category,
+    sales: cs.revenue,
+    orders: cs.orders
+  })) || [];
+
+  const sellerActivities: SellerActivity[] = stats?.sellerActivity.map(sa => ({
+    name: sa.sellerId,
+    shopName: sa.shopName,
+    orders: sa.ordersToday,
+    activity: Math.min(99, Math.round((sa.ordersToday / 20) * 100))
+  })) || [];
+
+  const maxSales = categoryData.length > 0 ? Math.max(...categoryData.map(c => c.sales)) : 1;
+  const maxOrders = categoryData.length > 0 ? Math.max(...categoryData.map(c => c.orders)) : 1;
 
   return (
     <View className={styles.adminPage}>
@@ -226,26 +253,43 @@ const AdminPage: React.FC = () => {
 
       <ScrollView scrollY className={styles.content}>
         <View className={styles.statGrid}>
-          {stats.map((stat, index) => (
-            <View
-              key={index}
-              className={styles.statCard}
-              onClick={() => handleStatClick(stat)}
-            >
-              <View className={styles.statHeader}>
-                <View className={`${styles.statIcon} ${stat.iconClass}`}>
-                  <Text>{stat.icon}</Text>
+          {loading || !stats ? (
+            [1, 2, 3, 4].map((i) => (
+              <View key={i} className={styles.statCard}>
+                <View className={styles.statHeader}>
+                  <View className={styles.statIcon}>
+                    <Text>📊</Text>
+                  </View>
                 </View>
+                <Text className={styles.statTitle}>加载中...</Text>
+                <Text className={styles.statValue}>--</Text>
+                <Text className={styles.statChange}>
+                  <Text>--</Text>
+                </Text>
               </View>
-              <Text className={styles.statTitle}>{stat.title}</Text>
-              <Text className={styles.statValue}>{stat.value}</Text>
-              <Text className={`${styles.statChange} ${stat.isUp ? styles.statChangeUp : styles.statChangeDown}`}>
-                <Text>{stat.isUp ? '↑' : '↓'}</Text>
-                <Text>{stat.change}</Text>
-                <Text> 较上期</Text>
-              </Text>
-            </View>
-          ))}
+            ))
+          ) : (
+            statData.map((stat, index) => (
+              <View
+                key={index}
+                className={styles.statCard}
+                onClick={() => handleStatClick(stat)}
+              >
+                <View className={styles.statHeader}>
+                  <View className={`${styles.statIcon} ${stat.iconClass}`}>
+                    <Text>{stat.icon}</Text>
+                  </View>
+                </View>
+                <Text className={styles.statTitle}>{stat.title}</Text>
+                <Text className={styles.statValue}>{stat.value}</Text>
+                <Text className={`${styles.statChange} ${stat.isUp ? styles.statChangeUp : styles.statChangeDown}`}>
+                  <Text>{stat.isUp ? '↑' : '↓'}</Text>
+                  <Text>{stat.change}</Text>
+                  <Text> 较上期</Text>
+                </Text>
+              </View>
+            ))
+          )}
         </View>
 
         <View className={styles.section}>
@@ -257,33 +301,41 @@ const AdminPage: React.FC = () => {
             <Text className={styles.sectionAction}>查看详情 ›</Text>
           </View>
           <View className={styles.chartContainer}>
-            <View className={styles.chartBars}>
-              {categoryData.map((item, index) => (
-                <View key={index} className={styles.chartBarGroup}>
-                  <View
-                    className={styles.chartBar}
-                    style={{ height: `${(item.sales / maxSales) * 220 + 20}rpx` }}
-                    data-value={`${(item.sales / 10000).toFixed(0)}万`}
-                  />
-                  <View
-                    className={`${styles.chartBar} ${styles.chartBarSecondary}`}
-                    style={{ height: `${(item.orders / maxOrders) * 180 + 10}rpx` }}
-                    data-value={`${(item.orders / 1000).toFixed(1)}k`}
-                  />
-                  <Text className={styles.chartLabel}>{item.name}</Text>
+            {loading || !stats ? (
+              <View className={styles.loadingPlaceholder}>
+                <Text>加载中...</Text>
+              </View>
+            ) : (
+              <>
+                <View className={styles.chartBars}>
+                  {categoryData.map((item, index) => (
+                    <View key={index} className={styles.chartBarGroup}>
+                      <View
+                        className={styles.chartBar}
+                        style={{ height: `${(item.sales / maxSales) * 220 + 20}rpx` }}
+                        data-value={`${(item.sales / 10000).toFixed(0)}万`}
+                      />
+                      <View
+                        className={`${styles.chartBar} ${styles.chartBarSecondary}`}
+                        style={{ height: `${(item.orders / maxOrders) * 180 + 10}rpx` }}
+                        data-value={`${(item.orders / 1000).toFixed(1)}k`}
+                      />
+                      <Text className={styles.chartLabel}>{item.name}</Text>
+                    </View>
+                  ))}
                 </View>
-              ))}
-            </View>
-            <View className={styles.chartLegend}>
-              <View className={styles.legendItem}>
-                <View className={`${styles.legendDot} ${styles.legendDotPrimary}`} />
-                <Text>销售额</Text>
-              </View>
-              <View className={styles.legendItem}>
-                <View className={`${styles.legendDot} ${styles.legendDotSecondary}`} />
-                <Text>订单量</Text>
-              </View>
-            </View>
+                <View className={styles.chartLegend}>
+                  <View className={styles.legendItem}>
+                    <View className={`${styles.legendDot} ${styles.legendDotPrimary}`} />
+                    <Text>销售额</Text>
+                  </View>
+                  <View className={styles.legendItem}>
+                    <View className={`${styles.legendDot} ${styles.legendDotSecondary}`} />
+                    <Text>订单量</Text>
+                  </View>
+                </View>
+              </>
+            )}
           </View>
         </View>
 
@@ -296,21 +348,27 @@ const AdminPage: React.FC = () => {
             <Text className={styles.sectionAction}>查看更多 ›</Text>
           </View>
           <View className={styles.activityList}>
-            {sellerActivities.map((item, index) => (
-              <View key={index} className={styles.activityItem}>
-                <View className={styles.activityInfo}>
-                  <Text className={styles.activityName}>{item.name}</Text>
-                  <Text className={styles.activityMeta}>{item.shopName} · {item.orders} 单</Text>
-                </View>
-                <View className={styles.activityBar}>
-                  <View
-                    className={styles.activityProgress}
-                    style={{ width: `${item.activity}%` }}
-                  />
-                </View>
-                <Text className={styles.activityValue}>{item.activity}%</Text>
+            {loading || !stats ? (
+              <View className={styles.loadingPlaceholder}>
+                <Text>加载中...</Text>
               </View>
-            ))}
+            ) : (
+              sellerActivities.map((item, index) => (
+                <View key={index} className={styles.activityItem}>
+                  <View className={styles.activityInfo}>
+                    <Text className={styles.activityName}>{item.name}</Text>
+                    <Text className={styles.activityMeta}>{item.shopName} · {item.orders} 单</Text>
+                  </View>
+                  <View className={styles.activityBar}>
+                    <View
+                      className={styles.activityProgress}
+                      style={{ width: `${item.activity}%` }}
+                    />
+                  </View>
+                  <Text className={styles.activityValue}>{item.activity}%</Text>
+                </View>
+              ))
+            )}
           </View>
         </View>
 
@@ -327,7 +385,7 @@ const AdminPage: React.FC = () => {
               <Text className={styles.metricLabel}>履约率</Text>
             </View>
             <View className={styles.metricCard}>
-              <Text className={`${styles.metricValue} ${styles.metricValueWarning}`}>3.2%</Text>
+              <Text className={`${styles.metricValue} ${styles.metricValueWarning}`}>{stats?.returnRate || '--'}%</Text>
               <Text className={styles.metricLabel}>{t('returnRate')}</Text>
             </View>
             <View className={styles.metricCard}>
@@ -374,10 +432,41 @@ const AdminPage: React.FC = () => {
           </View>
         </View>
 
-        <Button className={styles.exportBtn} onClick={handleExport}>
-          <Text className={styles.exportIcon}>📥</Text>
-          <Text>{t('export')} {t('monthlyReport')}</Text>
-        </Button>
+        <View className={styles.section}>
+          <View className={styles.sectionHeader}>
+            <Text className={styles.sectionTitle}>
+              <Text className={styles.sectionIcon}>📥</Text>
+              导出报表
+            </Text>
+          </View>
+          <View className={styles.exportSection}>
+            <Button className={styles.exportCardBtn} onClick={() => handleExportReport('full')} disabled={exporting}>
+              <Text className={styles.exportCardIcon}>�</Text>
+              <Text className={styles.exportCardTitle}>完整报表</Text>
+              <Text className={styles.exportCardDesc}>包含所有数据</Text>
+            </Button>
+            <Button className={styles.exportCardBtn} onClick={() => handleExportReport('country')} disabled={exporting}>
+              <Text className={styles.exportCardIcon}>🌍</Text>
+              <Text className={styles.exportCardTitle}>各国营收</Text>
+              <Text className={styles.exportCardDesc}>按国家统计</Text>
+            </Button>
+            <Button className={styles.exportCardBtn} onClick={() => handleExportReport('seller')} disabled={exporting}>
+              <Text className={styles.exportCardIcon}>👤</Text>
+              <Text className={styles.exportCardTitle}>卖家绩效</Text>
+              <Text className={styles.exportCardDesc}>卖家排名统计</Text>
+            </Button>
+            <Button className={styles.exportCardBtn} onClick={() => handleExportReport('return')} disabled={exporting}>
+              <Text className={styles.exportCardIcon}>↩️</Text>
+              <Text className={styles.exportCardTitle}>退货分析</Text>
+              <Text className={styles.exportCardDesc}>退货原因统计</Text>
+            </Button>
+            <Button className={styles.exportCardBtn} onClick={() => handleExportReport('logistics')} disabled={exporting}>
+              <Text className={styles.exportCardIcon}>🚚</Text>
+              <Text className={styles.exportCardTitle}>物流时效</Text>
+              <Text className={styles.exportCardDesc}>物流商统计</Text>
+            </Button>
+          </View>
+        </View>
       </ScrollView>
     </View>
   );

@@ -27,44 +27,24 @@ const generateReturnId = (): string => {
   return 'ret_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 };
 
-const mockOrders = [
-  {
-    id: 'o001',
-    orderNo: 'GS202406060001',
-    items: [{ productId: 'p001', productName: '高端智能无线蓝牙耳机 Pro', productImage: 'https://picsum.photos/id/3/200/200', price: 599, quantity: 2 }]
-  },
-  {
-    id: 'o002',
-    orderNo: 'GS202406050002',
-    items: [{ productId: 'p002', productName: '轻奢时尚女士手提包', productImage: 'https://picsum.photos/id/220/200/200', price: 899, quantity: 1 }]
-  },
-  {
-    id: 'o003',
-    orderNo: 'GS202406030003',
-    items: [{ productId: 'p003', productName: '智能手表运动版', productImage: 'https://picsum.photos/id/1/200/200', price: 1299, quantity: 1 }]
-  }
-];
-
 export const createReturnRequest = (
   orderId: string,
+  orderNo: string,
   productId: string,
+  productName: string,
+  productImage: string,
+  _skuId: string,
+  _skuSpec: string,
+  _quantity: number,
   reason: string,
   description: string,
-  images: string[]
+  images: string[],
+  _buyerId: string,
+  _buyerName: string,
+  _sellerId: string,
+  refundAmount: number
 ): ReturnRequest => {
-  console.log('[ReturnEngine] Creating return request:', { orderId, productId, reason, description, images });
-
-  const order = mockOrders.find(o => o.id === orderId);
-  if (!order) {
-    console.error('[ReturnEngine] Order not found:', orderId);
-    throw new Error('订单不存在');
-  }
-
-  const orderItem = order.items.find(i => i.productId === productId);
-  if (!orderItem) {
-    console.error('[ReturnEngine] Product not found in order:', { orderId, productId });
-    throw new Error('订单中未找到该商品');
-  }
+  console.log('[ReturnEngine] Creating return request:', { orderId, orderNo, productId, productName, reason, refundAmount });
 
   const now = new Date();
   const sellerDeadline = new Date(now.getTime() + SELLER_TIMEOUT_HOURS * 60 * 60 * 1000);
@@ -72,17 +52,17 @@ export const createReturnRequest = (
   const returnRequest: ReturnRequest = {
     id: generateReturnId(),
     orderId,
-    orderNo: order.orderNo,
+    orderNo,
     productId,
-    productName: orderItem.productName,
-    productImage: orderItem.productImage,
+    productName,
+    productImage,
     reason,
     description,
     images: images || [],
     status: 'pending_seller',
     sellerDeadline: sellerDeadline.toISOString(),
     trackingNumber: '',
-    refundAmount: orderItem.price * orderItem.quantity,
+    refundAmount,
     createdAt: now.toISOString()
   };
 

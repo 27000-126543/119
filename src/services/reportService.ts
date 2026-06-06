@@ -67,7 +67,7 @@ export const generateDashboardStats = (
   const baseOrders = 15842;
   
   const countryMultiplier = filter.country ? 
-    mockMonthlyReports['2025-06'].countryBreakdown.find(c => c.countryCode === filter.country)?.revenue / baseRevenue || 1 : 1;
+    (mockMonthlyReports['2025-06']?.countryBreakdown.find(c => c.countryCode === filter.country)?.revenue || 0) / baseRevenue || 1 : 1;
 
   return {
     totalOrders: Math.round(baseOrders * countryMultiplier),
@@ -218,7 +218,7 @@ export const downloadCSV = (content: string, filename: string): void => {
   console.log('[ReportService] CSV download initiated');
 };
 
-export const exportMonthlyReport = async (month: string, type: 'full' | 'country' | 'seller' | 'return' | 'logistics' = 'full'): Promise<void> => {
+export const exportMonthlyReport = async (month: string, type: 'full' | 'country' | 'seller' | 'return' | 'logistics' = 'full'): Promise<{ csvContent: string; filename: string }> => {
   console.log('[ReportService] Exporting monthly report:', month, 'type:', type);
   
   const report = getMonthlyReport(month);
@@ -226,33 +226,33 @@ export const exportMonthlyReport = async (month: string, type: 'full' | 'country
     throw new Error('报表不存在');
   }
   
-  let content: string;
+  let csvContent: string;
   let filename: string;
   
   switch (type) {
     case 'country':
-      content = generateCountryCSV(report);
+      csvContent = generateCountryCSV(report);
       filename = `各国家营收_${month}.csv`;
       break;
     case 'seller':
-      content = generateSellerCSV(report);
+      csvContent = generateSellerCSV(report);
       filename = `卖家绩效_${month}.csv`;
       break;
     case 'return':
-      content = generateReturnCSV(report);
+      csvContent = generateReturnCSV(report);
       filename = `退货原因分析_${month}.csv`;
       break;
     case 'logistics':
-      content = generateLogisticsCSV(report);
+      csvContent = generateLogisticsCSV(report);
       filename = `物流时效_${month}.csv`;
       break;
     default:
-      content = generateFullReportCSV(report);
+      csvContent = generateFullReportCSV(report);
       filename = `月度报表_${month}.csv`;
   }
   
-  downloadCSV(content, filename);
-  console.log('[ReportService] Report exported successfully:', filename);
+  console.log('[ReportService] Report generated successfully:', filename);
+  return { csvContent, filename };
 };
 
 export const predictHotCategories = (months: number = 3): Array<{

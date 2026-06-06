@@ -7,12 +7,15 @@ import {
   ScrollView,
   Input
 } from '@tarojs/components';
-import Taro from '@tarojs/taro';
+import Taro, { useRouter } from '@tarojs/taro';
 import classnames from 'classnames';
 import styles from './index.module.scss';
 import { useTranslation, formatPrice } from '@/store/useLocaleStore';
+import { usePaymentStore } from '@/store/usePaymentStore';
+import { useOrderStore } from '@/store/useOrderStore';
+import { useUserStore } from '@/store/useUserStore';
 import { useCartStore } from '@/store/useCartStore';
-import type { CartItem } from '@/types/order';
+import type { OrderItem } from '@/types/order';
 
 interface PaymentMethod {
   id: string;
@@ -25,11 +28,18 @@ interface PaymentMethod {
 
 const PaymentPage: React.FC = () => {
   useTranslation();
+  const router = useRouter();
+  const { createPaymentOrder, processPayment, isProcessing } = usePaymentStore();
+  const { getOrderDetail } = useOrderStore();
+  const { user } = useUserStore();
   const cartItems = useCartStore((state) => state.getSelectedItems());
   const clearSelected = useCartStore((state) => state.clearSelected);
+
+  const [orderIds, setOrderIds] = useState<string[]>([]);
+  const [totalAmount, setTotalAmount] = useState(0);
   const [selectedMethod, setSelectedMethod] = useState<string>('alipay');
   const [orderNote, setOrderNote] = useState('');
-  const [paying, setPaying] = useState(false);
+  const [orders, setOrders] = useState<any[]>([]);
 
   const paymentMethods: PaymentMethod[] = [
     {
@@ -77,21 +87,69 @@ const PaymentPage: React.FC = () => {
   const shippingFee = 25;
   const taxRate = 0.13;
 
+  const displayItems = useMemo(() => {
+    if (orders.length > 0) {
+      return orders.flatMap(order => order.items.map((item: OrderItem) => ({
+        ...item,
+        productId: item.productId,
+        productName: item.productName,
+        productImage: item.productImage,
+        skuId: item.skuId,
+        skuSpec: item.skuSpec,
+        price: item.price,
+        quantity: item.quantity
+      })));
+    }
+    return cartItems;
+  }, [orders, cartItems]);
+
   const calculations = useMemo(() => {
+    if (orders.length > 0 && totalAmount > 0) {
+      const subtotal = orders.reduce((sum, order) => sum + order.subtotal, 0);
+      const totalShipping = orders.reduce((sum, order) => sum + order.shippingFee, 0);
+      const totalTax = orders.reduce((sum, order) => sum + order.tax, 0);
+      const discount = subtotal > 1000 ? 50 : 0;
+      const total = totalAmount;
+      return { subtotal, discount, tax: totalTax, total, shippingFee: totalShipping };
+    }
+    
     const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const discount = subtotal > 1000 ? 50 : 0;
     const tax = Math.round((subtotal - discount) * taxRate * 100) / 100;
     const total = subtotal - discount + shippingFee + tax;
-    return { subtotal, discount, tax, total };
-  }, [cartItems]);
+    return { subtotal, discount, tax, total, shippingFee };
+  }, [orders, cartItems, totalAmount]);
 
   useEffect(() => {
     console.log('[PaymentPage] Mounted');
+    
+    const { orderIds: orderIdsParam, totalAmount: totalAmountParam } = router.params;
+    
+    if (orderIdsParam) {
+      try {
+        const parsedOrderIds = JSON.parse(decodeURIComponent(orderIdsParam));
+        setOrderIds(parsedOrderIds);
+        console.log('[PaymentPage] Parsed orderIds:', parsedOrderIds);
+        
+        const loadedOrders = parsedOrderIds.map((id: string) => getOrderDetail(id)).filter(Boolean);
+        setOrders(loadedOrders);
+        console.log('[PaymentPage] Loaded orders:', loadedOrders.length);
+      } catch (e) {
+        console.error('[PaymentPage] Failed to parse orderIds:', e);
+      }
+    }
+    
+    if (totalAmountParam) {
+      const parsedAmount = parseFloat(decodeURIComponent(totalAmountParam));
+      setTotalAmount(parsedAmount);
+      console.log('[PaymentPage] Parsed totalAmount:', parsedAmount);
+    }
+    
     console.log('[PaymentPage] Cart items count:', cartItems.length);
-    if (cartItems.length === 0) {
+    if (cartItems.length === 0 && orders.length === 0) {
       console.warn('[PaymentPage] No items selected for payment');
     }
-  }, [cartItems.length]);
+  }, [router.params, getOrderDetail, cartItems.length, orders.length]);
 
   const handleAddressClick = () => {
     console.log('[PaymentPage] Address clicked');
@@ -114,8 +172,13 @@ const PaymentPage: React.FC = () => {
   };
 
   const handlePay = async () => {
-    if (cartItems.length === 0) {
+    if (displayItems.length === 0) {
       Taro.showToast({ title: '请选择商品', icon: 'none' });
+      return;
+    }
+
+    if (!user) {
+      Taro.showToast({ title: '请先登录', icon: 'none' });
       return;
     }
 
@@ -123,13 +186,45 @@ const PaymentPage: React.FC = () => {
     console.log('[PaymentPage] Payment method:', selectedMethod);
     console.log('[PaymentPage] Order amount:', calculations.total);
 
-    setPaying(true);
     Taro.showLoading({ title: '支付中...', mask: true });
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      let finalOrderIds = orderIds;
+      let finalTotalAmount = totalAmount > 0 ? totalAmount : calculations.total;
 
-      console.log('[PaymentPage] Payment successful');
+      if (finalOrderIds.length === 0) {
+        console.log('[PaymentPage] No orderIds from route, using cart flow');
+        Taro.showToast({ title: '请先创建订单', icon: 'none' });
+        Taro.hideLoading();
+        return;
+      }
+
+      console.log('[PaymentPage] Creating payment order for orders:', finalOrderIds);
+      const paymentOrder = await createPaymentOrder(finalOrderIds, finalTotalAmount, 'CNY');
+      
+      if (!paymentOrder) {
+        throw new Error('创建支付订单失败');
+      }
+
+      console.log('[PaymentPage] Payment order created:', paymentOrder.id);
+
+      const paymentMethodMap: Record<string, 'alipay' | 'wechat' | 'card' | 'apple_pay'> = {
+        alipay: 'alipay',
+        wechat: 'wechat',
+        card: 'card',
+        apple: 'apple_pay'
+      };
+
+      const method = paymentMethodMap[selectedMethod] || 'alipay';
+      console.log('[PaymentPage] Processing payment with method:', method);
+      
+      const paymentResult = await processPayment(paymentOrder.id, method);
+      
+      if (!paymentResult || !paymentResult.success) {
+        throw new Error(paymentResult?.message || '支付失败');
+      }
+
+      console.log('[PaymentPage] Payment successful:', paymentResult.transactionId);
       Taro.hideLoading();
       Taro.showToast({ title: '支付成功', icon: 'success' });
 
@@ -139,12 +234,10 @@ const PaymentPage: React.FC = () => {
       setTimeout(() => {
         Taro.redirectTo({ url: '/pages/orders/index' });
       }, 1500);
-    } catch (e) {
+    } catch (e: any) {
       console.error('[PaymentPage] Payment error:', e);
       Taro.hideLoading();
-      Taro.showToast({ title: '支付失败，请重试', icon: 'none' });
-    } finally {
-      setPaying(false);
+      Taro.showToast({ title: e.message || '支付失败，请重试', icon: 'none' });
     }
   };
 
@@ -186,9 +279,9 @@ const PaymentPage: React.FC = () => {
             <Text className={styles.sectionTitle}>商品清单</Text>
           </View>
           <View className={styles.productList}>
-            {cartItems.map((item: CartItem) => (
+            {displayItems.map((item: any, index: number) => (
               <View
-                key={`${item.productId}-${item.skuId}`}
+                key={`${item.productId}-${item.skuId}-${index}`}
                 className={styles.productItem}
                 onClick={() => handleProductClick(item.productId)}
               >
@@ -231,7 +324,7 @@ const PaymentPage: React.FC = () => {
                 <Text className={styles.costLabelIcon}>🚚</Text>
                 运费
               </Text>
-              <Text className={styles.costValue}>{formatPrice(shippingFee)}</Text>
+              <Text className={styles.costValue}>{formatPrice(calculations.shippingFee)}</Text>
             </View>
             <View className={styles.costItem}>
               <Text className={styles.costLabel}>
@@ -334,12 +427,12 @@ const PaymentPage: React.FC = () => {
           <Text className={styles.footerTotalValue}>{formatPrice(calculations.total)}</Text>
         </View>
         <Button
-          className={classnames(styles.payBtn, paying && styles.disabled)}
+          className={classnames(styles.payBtn, isProcessing && styles.disabled)}
           onClick={handlePay}
-          disabled={paying || cartItems.length === 0}
+          disabled={isProcessing || displayItems.length === 0}
         >
           <Text className={styles.secureIcon}>🔒</Text>
-          <Text>{paying ? '支付中...' : `立即支付(${getMethodName()})`}</Text>
+          <Text>{isProcessing ? '支付中...' : `立即支付(${getMethodName()})`}</Text>
         </Button>
       </View>
     </View>

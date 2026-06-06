@@ -451,3 +451,54 @@
 .exportIcon {
   font-size: $font-size-lg;
 }
+
+.loadingPlaceholder {
+  height: 280rpx;
+  @include flex-center;
+  color: $color-text-tertiary;
+  font-size: $font-size-sm;
+}
+
+.exportSection {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-md;
+}
+
+.exportCardBtn {
+  @include button-reset;
+  width: calc(50% - #{$spacing-sm});
+  background: $color-bg-page;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-xs;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.97);
+    background: rgba(37, 99, 235, 0.05);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+  }
+}
+
+.exportCardIcon {
+  font-size: 48rpx;
+  margin-bottom: $spacing-xs;
+}
+
+.exportCardTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.exportCardDesc {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}

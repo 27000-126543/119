@@ -12,14 +12,19 @@ import styles from './index.module.scss';
 import { useTranslation, formatPrice } from '@/store/useLocaleStore';
 import { useCartStore } from '@/store/useCartStore';
 import { useUserStore } from '@/store/useUserStore';
+import { useOrderStore } from '@/store/useOrderStore';
 import ProductCard from '@/components/ProductCard';
 import { mockProducts as products } from '@/data/products';
+import type { SplitOrderResult } from '@/types/warehouse';
 
 const CartPage: React.FC = () => {
   const t = useTranslation();
   const { items, toggleItem, updateQuantity, removeItem, toggleAll, getSelectedItems, clearSelected } = useCartStore();
   const { user } = useUserStore();
+  const { previewSplitOrder, clearSplitResults, isLoading } = useOrderStore();
   const [isEditMode, setIsEditMode] = useState(false);
+  const [showSplitPreview, setShowSplitPreview] = useState(false);
+  const [splitResults, setSplitResults] = useState<SplitOrderResult[]>([]);
 
   useEffect(() => {
     console.log('[CartPage] Mounted, items count:', items.length);
@@ -96,8 +101,59 @@ const CartPage: React.FC = () => {
       Taro.showToast({ title: '请选择商品', icon: 'none' });
       return;
     }
-    console.log('[CartPage] Settle items:', selectedItems.length, 'total:', totalPrice);
-    Taro.navigateTo({ url: '/pages/payment/index' });
+    
+    console.log('[CartPage] Previewing order split...');
+    const results = previewSplitOrder(selectedItems, user.country || 'CN');
+    setSplitResults(results);
+    setShowSplitPreview(true);
+    
+    console.log('[CartPage] Split preview:', results.length, 'orders');
+  };
+
+  const handleProceedToPayment = async () => {
+    console.log('[CartPage] Proceeding to payment...');
+    Taro.showLoading({ title: '创建订单中...' });
+    
+    try {
+      const { createOrdersFromCart } = useOrderStore.getState();
+      const address = {
+        name: user?.nickname || '买家',
+        phone: user?.phone || '',
+        country: user?.country || 'CN',
+        province: '浙江省',
+        city: '杭州市',
+        address: '西湖区文三路123号',
+        postalCode: '310000'
+      };
+      
+      const orders = await createOrdersFromCart(
+        user?.country || 'CN',
+        address,
+        'standard'
+      );
+      
+      Taro.hideLoading();
+      
+      if (orders.length > 0) {
+        Taro.showToast({ title: '订单创建成功', icon: 'success' });
+        const orderIds = orders.map(o => o.id).join(',');
+        const totalAmount = orders.reduce((sum, o) => sum + o.total, 0);
+        
+        setTimeout(() => {
+          Taro.navigateTo({ 
+            url: `/pages/payment/index?orderIds=${orderIds}&totalAmount=${totalAmount}` 
+          });
+        }, 800);
+      }
+    } catch (error: any) {
+      Taro.hideLoading();
+      Taro.showToast({ title: error.message || '创建订单失败', icon: 'none' });
+    }
+  };
+
+  const handleCloseSplitPreview = () => {
+    setShowSplitPreview(false);
+    clearSplitResults();
   };
 
   const handleShopSelectAll = (shopId: string) => {
@@ -258,7 +314,7 @@ const CartPage: React.FC = () => {
             </View>
             <Button
               className={classnames(styles.settleBtn, selectedItems.length === 0 && styles.settleBtnDisabled)}
-              disabled={selectedItems.length === 0}
+              disabled={selectedItems.length === 0 || isLoading}
               onClick={handleSettle}
             >
               去结算 ({totalCount})
@@ -270,6 +326,88 @@ const CartPage: React.FC = () => {
           </Button>
         )}
       </View>
+
+      {showSplitPreview && (
+        <View className={styles.modalOverlay} onClick={handleCloseSplitPreview}>
+          <View className={styles.modalContent} onClick={e => e.stopPropagation()}>
+            <View className={styles.modalHeader}>
+              <Text className={styles.modalTitle}>订单拆单预览</Text>
+              <Text className={styles.modalClose} onClick={handleCloseSplitPreview}>×</Text>
+            </View>
+            
+            <ScrollView scrollY className={styles.modalBody}>
+              <View className={styles.splitInfo}>
+                <Text className={styles.splitInfoText}>
+                  根据商品库存和收货地址，系统将自动拆分为 <Text className={styles.splitInfoHighlight}>{splitResults.length}</Text> 个订单发货
+                </Text>
+              </View>
+
+              {splitResults.map((split, index) => (
+                <View key={index} className={styles.splitOrderCard}>
+                  <View className={styles.splitOrderHeader}>
+                    <Text className={styles.splitOrderTitle}>子订单 {index + 1}</Text>
+                    <Text className={styles.splitOrderWarehouse}>
+                      📦 {split.warehouseName}
+                    </Text>
+                  </View>
+                  
+                  {split.items.map((item, itemIndex) => (
+                    <View key={itemIndex} className={styles.splitOrderItem}>
+                      <Image className={styles.splitItemImage} src={item.image} mode="aspectFill" />
+                      <View className={styles.splitItemInfo}>
+                        <Text className={styles.splitItemName}>{item.name}</Text>
+                        <Text className={styles.splitItemSpec}>{Object.values(item.specs).join(' / ')}</Text>
+                        <Text className={styles.splitItemPrice}>
+                          {formatPrice(item.price)} × {item.quantity}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+
+                  <View className={styles.splitOrderSummary}>
+                    <View className={styles.summaryRow}>
+                      <Text className={styles.summaryLabel}>商品金额</Text>
+                      <Text className={styles.summaryValue}>{formatPrice(split.subtotal)}</Text>
+                    </View>
+                    <View className={styles.summaryRow}>
+                      <Text className={styles.summaryLabel}>运费</Text>
+                      <Text className={styles.summaryValue}>{formatPrice(split.shippingFee)}</Text>
+                    </View>
+                    <View className={styles.summaryRow}>
+                      <Text className={styles.summaryLabel}>税费</Text>
+                      <Text className={styles.summaryValue}>{formatPrice(split.tax)}</Text>
+                    </View>
+                    <View className={styles.summaryRow}>
+                      <Text className={styles.summaryLabel}>小计</Text>
+                      <Text className={styles.summaryValueHighlight}>{formatPrice(split.total)}</Text>
+                    </View>
+                  </View>
+                </View>
+              ))}
+
+              <View className={styles.splitTotal}>
+                <Text className={styles.splitTotalLabel}>订单总计</Text>
+                <Text className={styles.splitTotalValue}>
+                  {formatPrice(splitResults.reduce((sum, s) => sum + s.total, 0))}
+                </Text>
+              </View>
+            </ScrollView>
+
+            <View className={styles.modalFooter}>
+              <Button className={styles.cancelBtn} onClick={handleCloseSplitPreview}>
+                取消
+              </Button>
+              <Button 
+                className={styles.confirmBtn} 
+                onClick={handleProceedToPayment}
+                disabled={isLoading}
+              >
+                {isLoading ? '创建中...' : '确认并支付'}
+              </Button>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   );
 };
