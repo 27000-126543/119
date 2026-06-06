@@ -1,0 +1,374 @@
+@use '@/styles/variables.scss' as *;
+
+.memberPage {
+  min-height: 100vh;
+  background: $color-bg-page;
+  padding-bottom: calc(env(safe-area-inset-bottom) + #{$spacing-xxl});
+}
+
+.header {
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  padding: $spacing-xl $page-padding;
+  padding-top: calc(env(safe-area-inset-top) + #{$spacing-xl});
+  color: $color-text-white;
+  position: relative;
+  overflow: hidden;
+}
+
+.decoration {
+  position: absolute;
+  right: -80rpx;
+  top: -80rpx;
+  width: 320rpx;
+  height: 320rpx;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+}
+
+.decoration2 {
+  position: absolute;
+  right: 120rpx;
+  bottom: -100rpx;
+  width: 260rpx;
+  height: 260rpx;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 50%;
+}
+
+.memberCard {
+  position: relative;
+  z-index: 1;
+}
+
+.levelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-lg;
+}
+
+.levelBadge {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.levelIcon {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: $radius-round;
+  background: rgba(255, 255, 255, 0.2);
+  @include flex-center;
+  font-size: 40rpx;
+}
+
+.levelTitle {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+}
+
+.levelPoints {
+  padding: $spacing-xs $spacing-md;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: $radius-round;
+  font-size: $font-size-sm;
+}
+
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  margin-bottom: $spacing-xl;
+}
+
+.avatar {
+  width: 104rpx;
+  height: 104rpx;
+  border-radius: $radius-round;
+  border: 4rpx solid rgba(255, 255, 255, 0.4);
+}
+
+.userText {
+  flex: 1;
+}
+
+.nickname {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  margin-bottom: $spacing-xs;
+}
+
+.tradeAmount {
+  font-size: $font-size-sm;
+  opacity: 0.9;
+}
+
+.progressSection {
+  position: relative;
+  z-index: 1;
+}
+
+.progressHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-sm;
+  font-size: $font-size-sm;
+}
+
+.progressBar {
+  height: 16rpx;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: $radius-round;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: $radius-round;
+  transition: width $transition-base;
+}
+
+.progressText {
+  margin-top: $spacing-xs;
+  font-size: $font-size-xs;
+  opacity: 0.85;
+}
+
+.diamondBadge {
+  text-align: center;
+  padding: $spacing-sm;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: $radius-md;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+}
+
+.content {
+  padding: $page-padding;
+  margin-top: -$spacing-lg;
+  position: relative;
+  z-index: 2;
+}
+
+.section {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-md;
+  box-shadow: $shadow-card;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-lg;
+}
+
+.sectionTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.sectionMore {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+}
+
+.benefitsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: $spacing-md;
+}
+
+.benefitItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-xs;
+  padding: $spacing-md 0;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+.benefitIcon {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: $radius-round;
+  background: linear-gradient(135deg, #e0f2fe 0%, #bfdbfe 100%);
+  @include flex-center;
+  font-size: 36rpx;
+}
+
+.benefitName {
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+}
+
+.benefitDesc {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.couponList {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+}
+
+.couponItem {
+  display: flex;
+  border: 2rpx solid $color-divider;
+  border-radius: $radius-md;
+  overflow: hidden;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.98);
+  }
+
+  &.used {
+    opacity: 0.5;
+  }
+
+  &.expired {
+    opacity: 0.5;
+  }
+}
+
+.couponLeft {
+  width: 180rpx;
+  padding: $spacing-md;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  @include flex-center;
+  flex-direction: column;
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    right: -12rpx;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 24rpx;
+    height: 24rpx;
+    border-radius: 50%;
+    background: $color-bg-card;
+  }
+}
+
+.couponValue {
+  font-size: $font-size-xxl;
+  font-weight: $font-weight-bold;
+  color: $color-warning;
+}
+
+.couponCondition {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  margin-top: $spacing-xs;
+}
+
+.couponRight {
+  flex: 1;
+  padding: $spacing-md;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.couponName {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-xs;
+}
+
+.couponDate {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.couponStatus {
+  padding: $spacing-xs $spacing-sm;
+  background: $color-divider;
+  color: $color-text-secondary;
+  font-size: $font-size-xs;
+  border-radius: $radius-xs;
+  align-self: flex-start;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: $spacing-md;
+}
+
+.statItem {
+  text-align: center;
+  padding: $spacing-md 0;
+}
+
+.statValue {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-xs;
+}
+
+.statLabel {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.levelUpTip {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  padding: $spacing-md;
+  background: rgba(59, 130, 246, 0.08);
+  border-radius: $radius-md;
+  margin-top: $spacing-md;
+}
+
+.levelUpTipText {
+  flex: 1;
+  font-size: $font-size-sm;
+  color: $color-primary;
+}
+
+.levelLevels {
+  display: flex;
+  gap: $spacing-sm;
+  margin-top: $spacing-lg;
+}
+
+.levelTag {
+  flex: 1;
+  text-align: center;
+  padding: $spacing-sm;
+  border-radius: $radius-md;
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  border: 2rpx solid $color-divider;
+  transition: all $transition-base;
+
+  &.active {
+    border-color: $color-primary;
+    background: rgba(59, 130, 246, 0.1);
+    color: $color-primary;
+    font-weight: $font-weight-semibold;
+  }
+}

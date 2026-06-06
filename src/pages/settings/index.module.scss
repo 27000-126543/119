@@ -1,0 +1,303 @@
+@use '@/styles/variables.scss' as *;
+
+.settingsPage {
+  min-height: 100vh;
+  background: $color-bg-page;
+  padding: $page-padding;
+  padding-bottom: calc(env(safe-area-inset-bottom) + #{$spacing-xxl});
+}
+
+.section {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  margin-bottom: $spacing-md;
+  box-shadow: $shadow-card;
+  overflow: hidden;
+}
+
+.sectionHeader {
+  padding: $spacing-lg $spacing-lg $spacing-md;
+}
+
+.sectionTitle {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  text-transform: uppercase;
+  letter-spacing: 1rpx;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  padding: $spacing-lg;
+  gap: $spacing-md;
+  border-bottom: 1rpx solid $color-divider;
+  transition: all $transition-base;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:active {
+    background: $color-bg-hover;
+  }
+}
+
+.menuIcon {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: $radius-md;
+  @include flex-center;
+  font-size: 36rpx;
+  flex-shrink: 0;
+}
+
+.iconLanguage {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+}
+
+.iconCurrency {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+}
+
+.iconNotification {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+}
+
+.iconPrivacy {
+  background: linear-gradient(135deg, #fce7f3 0%, #f9a8d4 100%);
+}
+
+.iconAbout {
+  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+}
+
+.iconLogout {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+}
+
+.menuContent {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.menuText {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+}
+
+.menuValue {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  margin-right: $spacing-xs;
+}
+
+.menuArrow {
+  font-size: $font-size-lg;
+  color: $color-text-tertiary;
+}
+
+.switchBtn {
+  width: 88rpx;
+  height: 48rpx;
+  border-radius: $radius-round;
+  background: $color-divider;
+  position: relative;
+  transition: all $transition-base;
+
+  &.active {
+    background: $color-primary;
+  }
+}
+
+.switchDot {
+  position: absolute;
+  top: 4rpx;
+  left: 4rpx;
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: $radius-round;
+  background: $color-text-white;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.15);
+  transition: all $transition-base;
+
+  .active & {
+    left: 44rpx;
+  }
+}
+
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  @include flex-center;
+  z-index: 1000;
+}
+
+.modalContent {
+  width: 90%;
+  max-width: 600rpx;
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  overflow: hidden;
+}
+
+.modalTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+  text-align: center;
+  padding: $spacing-xl;
+  border-bottom: 1rpx solid $color-divider;
+}
+
+.modalList {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.modalItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $spacing-lg $spacing-xl;
+  border-bottom: 1rpx solid $color-divider;
+  transition: all $transition-base;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:active {
+    background: $color-bg-hover;
+  }
+}
+
+.modalItemLeft {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+}
+
+.modalItemIcon {
+  font-size: 40rpx;
+}
+
+.modalItemText {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+}
+
+.modalItemCheck {
+  font-size: $font-size-lg;
+  color: $color-primary;
+}
+
+.modalCancel {
+  padding: $spacing-lg;
+  text-align: center;
+  font-size: $font-size-md;
+  color: $color-text-secondary;
+  border-top: 1rpx solid $color-divider;
+  transition: all $transition-base;
+
+  &:active {
+    background: $color-bg-hover;
+  }
+}
+
+.notificationSubItem {
+  padding-left: 120rpx;
+}
+
+.notificationItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: $spacing-md 0;
+  border-bottom: 1rpx solid $color-divider;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.notificationLabel {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.aboutCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-xl;
+  margin-bottom: $spacing-md;
+  text-align: center;
+  box-shadow: $shadow-card;
+}
+
+.appLogo {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: $radius-xl;
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  @include flex-center;
+  font-size: 56rpx;
+  margin: 0 auto $spacing-lg;
+}
+
+.appName {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-xs;
+}
+
+.appVersion {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  margin-bottom: $spacing-md;
+}
+
+.appDesc {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  line-height: $line-height-loose;
+}
+
+.logoutSection {
+  margin-top: $spacing-xl;
+}
+
+.logoutBtn {
+  @include button-reset;
+  width: 100%;
+  height: $button-height-lg;
+  border-radius: $radius-button;
+  background: $color-bg-card;
+  color: $color-error;
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  box-shadow: $shadow-card;
+  transition: all $transition-base;
+
+  &:active {
+    background: $color-bg-hover;
+    transform: scale(0.98);
+  }
+}
+
+.currencySymbol {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  margin-right: $spacing-xs;
+}
+
+.privacyItems {
+  padding: 0 $spacing-lg $spacing-lg;
+}

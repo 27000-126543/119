@@ -1,0 +1,117 @@
+@use '@/styles/variables.scss' as *;
+
+.productCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
+  overflow: hidden;
+  transition: all $transition-base;
+  width: 100%;
+
+  &:active {
+    transform: scale(0.98);
+    box-shadow: $shadow-card-hover;
+  }
+}
+
+.imageWrapper {
+  position: relative;
+  width: 100%;
+  height: 330rpx;
+  background: $color-bg-page;
+}
+
+.productImage {
+  width: 100%;
+  height: 100%;
+}
+
+.tagList {
+  position: absolute;
+  top: $spacing-sm;
+  left: $spacing-sm;
+  display: flex;
+  gap: $spacing-xs;
+  flex-wrap: wrap;
+}
+
+.tag {
+  padding: 4rpx $spacing-sm;
+  border-radius: $radius-xs;
+  font-size: $font-size-xs;
+  color: $color-text-white;
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+}
+
+.hotTag {
+  background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
+}
+
+.newTag {
+  background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+}
+
+.content {
+  padding: $spacing-md;
+}
+
+.productName {
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  color: $color-text-primary;
+  line-height: 1.4;
+  height: 78rpx;
+  @include text-ellipsis-multi(2);
+  margin-bottom: $spacing-sm;
+}
+
+.shopName {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-bottom: $spacing-sm;
+  @include text-ellipsis;
+}
+
+.priceRow {
+  display: flex;
+  align-items: baseline;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-sm;
+}
+
+.price {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  color: $color-price;
+}
+
+.originalPrice {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  text-decoration: line-through;
+}
+
+.metaRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.rating {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  color: $color-warning;
+}
+
+.sales {
+  color: $color-text-tertiary;
+}
+
+.wholesaleTip {
+  font-size: $font-size-xs;
+  color: $color-success;
+  margin-top: $spacing-xs;
+}

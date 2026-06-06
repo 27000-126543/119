@@ -1,0 +1,411 @@
+@use '@/styles/variables.scss' as *;
+
+.paymentPage {
+  min-height: 100vh;
+  background: $color-bg-page;
+  padding-bottom: calc(env(safe-area-inset-bottom) + 160rpx);
+}
+
+.content {
+  padding: $spacing-md $page-padding;
+}
+
+.section {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-lg;
+  box-shadow: $shadow-card;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-md;
+}
+
+.sectionIcon {
+  font-size: $font-size-lg;
+}
+
+.sectionTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.addressCard {
+  display: flex;
+  align-items: flex-start;
+  gap: $spacing-md;
+  padding: $spacing-md;
+  background: $color-bg-page;
+  border-radius: $radius-md;
+}
+
+.addressIcon {
+  font-size: 32rpx;
+  color: $color-primary;
+  margin-top: 4rpx;
+}
+
+.addressInfo {
+  flex: 1;
+}
+
+.addressTop {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-xs;
+}
+
+.addressName {
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  color: $color-text-primary;
+}
+
+.addressPhone {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.addressDetail {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  line-height: 1.6;
+}
+
+.addressArrow {
+  font-size: $font-size-md;
+  color: $color-text-tertiary;
+  align-self: center;
+}
+
+.productList {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+}
+
+.productItem {
+  display: flex;
+  gap: $spacing-md;
+  padding: $spacing-md;
+  background: $color-bg-page;
+  border-radius: $radius-md;
+  transition: all $transition-fast;
+
+  &:active {
+    background: rgba(37, 99, 235, 0.05);
+  }
+}
+
+.productImage {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: $radius-md;
+  flex-shrink: 0;
+}
+
+.productInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.productName {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  @include text-ellipsis-multi(2);
+  line-height: 1.5;
+}
+
+.productSpec {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-top: $spacing-xs;
+}
+
+.productBottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: $spacing-sm;
+}
+
+.productPrice {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $color-price;
+}
+
+.productQuantity {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}
+
+.costList {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+}
+
+.costItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.costLabel {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+}
+
+.costLabelIcon {
+  font-size: $font-size-sm;
+}
+
+.costValue {
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+}
+
+.costValueDiscount {
+  color: $color-success;
+}
+
+.costDivider {
+  height: 1rpx;
+  background: $color-border;
+  margin: $spacing-sm 0;
+}
+
+.totalRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: $spacing-sm;
+}
+
+.totalLabel {
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  color: $color-text-primary;
+}
+
+.totalValue {
+  font-size: $font-size-xxl;
+  font-weight: $font-weight-bold;
+  color: $color-price;
+}
+
+.paymentMethodList {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+}
+
+.paymentMethodItem {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  padding: $spacing-md;
+  background: $color-bg-page;
+  border-radius: $radius-md;
+  border: 2rpx solid transparent;
+  transition: all $transition-fast;
+
+  &.active {
+    border-color: $color-primary;
+    background: rgba(37, 99, 235, 0.05);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.methodIcon {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: $radius-md;
+  @include flex-center;
+  font-size: 32rpx;
+}
+
+.methodIconAlipay {
+  background: linear-gradient(135deg, #1677ff 0%, #69b1ff 100%);
+}
+
+.methodIconWechat {
+  background: linear-gradient(135deg, #07c160 0%, #91d5a8 100%);
+}
+
+.methodIconCard {
+  background: linear-gradient(135deg, #722ed1 0%, #b37feb 100%);
+}
+
+.methodIconApple {
+  background: linear-gradient(135deg, #000 0%, #666 100%);
+}
+
+.methodInfo {
+  flex: 1;
+}
+
+.methodName {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+  margin-bottom: 4rpx;
+}
+
+.methodDesc {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.methodBadge {
+  font-size: $font-size-xs;
+  padding: 4rpx $spacing-sm;
+  border-radius: $radius-xs;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #92400e;
+  font-weight: $font-weight-medium;
+  margin-left: $spacing-sm;
+}
+
+.radioIcon {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  border: 3rpx solid $color-border;
+  @include flex-center;
+  transition: all $transition-fast;
+
+  &.active {
+    border-color: $color-primary;
+    background: $color-primary;
+  }
+}
+
+.radioInner {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  background: $color-text-white;
+}
+
+.couponCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $spacing-md;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border-radius: $radius-md;
+}
+
+.couponInfo {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.couponIcon {
+  font-size: $font-size-lg;
+}
+
+.couponText {
+  font-size: $font-size-sm;
+  color: $color-error;
+  font-weight: $font-weight-medium;
+}
+
+.couponAmount {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $color-error;
+}
+
+.footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: $color-bg-card;
+  padding: $spacing-md $page-padding;
+  padding-bottom: calc(env(safe-area-inset-bottom) + #{$spacing-md});
+  display: flex;
+  align-items: center;
+  gap: $spacing-lg;
+  box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.08);
+}
+
+.footerTotal {
+  flex: 1;
+}
+
+.footerTotalLabel {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  margin-bottom: 4rpx;
+}
+
+.footerTotalValue {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  color: $color-price;
+}
+
+.payBtn {
+  @include button-reset;
+  min-width: 240rpx;
+  height: $button-height-lg;
+  padding: 0 $spacing-xl;
+  border-radius: $radius-button;
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  color: $color-text-white;
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  box-shadow: 0 8rpx 24rpx rgba(37, 99, 235, 0.3);
+  transition: all $transition-base;
+
+  &:active {
+    opacity: 0.9;
+    transform: scale(0.98);
+  }
+
+  &.disabled {
+    background: $color-border;
+    color: $color-text-tertiary;
+    box-shadow: none;
+  }
+}
+
+.secureIcon {
+  font-size: $font-size-sm;
+  margin-right: $spacing-xs;
+}
+
+.orderNote {
+  width: 100%;
+  min-height: 80rpx;
+  padding: $spacing-md;
+  background: $color-bg-page;
+  border-radius: $radius-md;
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  line-height: 1.6;
+}
+
+.orderNote::placeholder {
+  color: $color-text-tertiary;
+}

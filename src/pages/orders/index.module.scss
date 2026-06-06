@@ -1,0 +1,383 @@
+@use '@/styles/variables.scss' as *;
+
+.ordersPage {
+  min-height: 100vh;
+  background: $color-bg-page;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 120rpx;
+}
+
+.tabHeader {
+  display: flex;
+  background: $color-bg-card;
+  padding: 0 $page-padding;
+  padding-top: calc(env(safe-area-inset-top) + #{$spacing-md});
+  border-bottom: 1rpx solid $color-divider;
+}
+
+.tabItem {
+  flex: 1;
+  height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: $font-size-md;
+  color: $color-text-secondary;
+  position: relative;
+  transition: all $transition-base;
+
+  &.active {
+    color: $color-primary;
+    font-weight: $font-weight-semibold;
+
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 48rpx;
+      height: 6rpx;
+      border-radius: 3rpx;
+      background: $color-primary;
+    }
+  }
+}
+
+.cartBadge {
+  position: absolute;
+  top: 16rpx;
+  right: 50%;
+  transform: translateX(80rpx);
+  min-width: 32rpx;
+  height: 32rpx;
+  padding: 0 8rpx;
+  background: $color-error;
+  color: $color-text-white;
+  font-size: 20rpx;
+  border-radius: $radius-round;
+  @include flex-center;
+  font-weight: $font-weight-medium;
+}
+
+.orderTabs {
+  display: flex;
+  background: $color-bg-card;
+  padding: $spacing-md $page-padding;
+  gap: $spacing-sm;
+  overflow-x: auto;
+  @include scroll-x-container;
+}
+
+.orderTabItem {
+  @include scroll-x-item(auto);
+  padding: $spacing-sm $spacing-lg;
+  border-radius: $radius-button;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  background: $color-bg-page;
+  white-space: nowrap;
+  transition: all $transition-base;
+
+  &.active {
+    background: $color-primary;
+    color: $color-text-white;
+    font-weight: $font-weight-medium;
+  }
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: $spacing-md $page-padding;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-xxl 0;
+  color: $color-text-tertiary;
+}
+
+.emptyIcon {
+  font-size: 120rpx;
+  margin-bottom: $spacing-md;
+  opacity: 0.5;
+}
+
+.emptyText {
+  font-size: $font-size-md;
+  margin-bottom: $spacing-lg;
+}
+
+.emptyBtn {
+  @include button-reset;
+  height: $button-height-md;
+  padding: 0 $spacing-xl;
+  border-radius: $radius-button;
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  color: $color-text-white;
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  transition: all $transition-base;
+
+  &:active {
+    opacity: 0.9;
+    transform: scale(0.98);
+  }
+}
+
+.cartList {
+  margin-bottom: $spacing-md;
+}
+
+.cartItemGroup {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  margin-bottom: $spacing-md;
+  box-shadow: $shadow-card;
+  overflow: hidden;
+}
+
+.cartShopHeader {
+  display: flex;
+  align-items: center;
+  padding: $spacing-md $spacing-lg;
+  border-bottom: 1rpx solid $color-divider;
+  gap: $spacing-sm;
+}
+
+.shopCheckbox {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: $radius-round;
+  border: 3rpx solid $color-border;
+  @include flex-center;
+  transition: all $transition-base;
+
+  &.checked {
+    background: $color-primary;
+    border-color: $color-primary;
+    color: $color-text-white;
+  }
+}
+
+.shopName {
+  flex: 1;
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  color: $color-text-primary;
+  @include text-ellipsis;
+}
+
+.cartItem {
+  display: flex;
+  padding: $spacing-lg;
+  gap: $spacing-md;
+  border-bottom: 1rpx solid $color-divider;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.itemCheckbox {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: $radius-round;
+  border: 3rpx solid $color-border;
+  @include flex-center;
+  margin-top: 60rpx;
+  flex-shrink: 0;
+  transition: all $transition-base;
+
+  &.checked {
+    background: $color-primary;
+    border-color: $color-primary;
+    color: $color-text-white;
+  }
+}
+
+.itemImage {
+  width: 180rpx;
+  height: 180rpx;
+  border-radius: $radius-md;
+  background: $color-bg-page;
+  flex-shrink: 0;
+}
+
+.itemInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.itemName {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  line-height: 1.4;
+  @include text-ellipsis-multi(2);
+}
+
+.itemSpec {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-top: $spacing-xs;
+  @include text-ellipsis;
+}
+
+.itemBottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: $spacing-sm;
+}
+
+.itemPrice {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $color-price;
+}
+
+.quantityControl {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.quantityBtn {
+  @include button-reset;
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: $radius-sm;
+  background: $color-bg-page;
+  color: $color-text-primary;
+  font-size: $font-size-lg;
+  transition: all $transition-base;
+
+  &:active {
+    background: $color-bg-hover;
+    transform: scale(0.95);
+  }
+
+  &.disabled {
+    opacity: 0.5;
+  }
+}
+
+.quantityValue {
+  min-width: 64rpx;
+  text-align: center;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+}
+
+.deleteBtn {
+  @include button-reset;
+  height: 56rpx;
+  padding: 0 $spacing-md;
+  border-radius: $radius-sm;
+  background: $color-bg-page;
+  color: $color-error;
+  font-size: $font-size-sm;
+  margin-left: $spacing-sm;
+  transition: all $transition-base;
+
+  &:active {
+    background: rgba(239, 68, 68, 0.1);
+  }
+}
+
+.cartFooter {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: $color-bg-card;
+  padding: $spacing-md $page-padding;
+  padding-bottom: calc(env(safe-area-inset-bottom) + #{$spacing-md});
+  display: flex;
+  align-items: center;
+  box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.08);
+  z-index: 100;
+}
+
+.selectAll {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.selectAllCheckbox {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: $radius-round;
+  border: 3rpx solid $color-border;
+  @include flex-center;
+  transition: all $transition-base;
+
+  &.checked {
+    background: $color-primary;
+    border-color: $color-primary;
+    color: $color-text-white;
+  }
+}
+
+.selectAllText {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.totalInfo {
+  flex: 1;
+  text-align: right;
+  padding-right: $spacing-lg;
+}
+
+.totalLabel {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.totalPrice {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  color: $color-price;
+  margin-left: $spacing-xs;
+}
+
+.checkoutBtn {
+  @include button-reset;
+  height: $button-height-lg;
+  padding: 0 $spacing-xl;
+  border-radius: $radius-button;
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  color: $color-text-white;
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  transition: all $transition-base;
+
+  &:active {
+    opacity: 0.9;
+    transform: scale(0.98);
+  }
+
+  &.disabled {
+    background: $color-text-disabled;
+  }
+}
+
+.orderList {
+  padding-bottom: $spacing-xxl;
+}
+
+.loadingMore {
+  text-align: center;
+  padding: $spacing-lg;
+  color: $color-text-tertiary;
+  font-size: $font-size-sm;
+}

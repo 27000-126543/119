@@ -1,0 +1,340 @@
+@use '@/styles/variables.scss' as *;
+
+.addressPage {
+  min-height: 100vh;
+  background: $color-bg-page;
+  padding: $page-padding;
+  padding-bottom: calc(env(safe-area-inset-bottom) + #{$spacing-xxl} + #{$button-height-lg} + #{$spacing-lg});
+}
+
+.addressList {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+}
+
+.addressCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: $shadow-card;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.99);
+  }
+}
+
+.addressHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: $spacing-md;
+}
+
+.addressUser {
+  flex: 1;
+}
+
+.userName {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+  margin-right: $spacing-md;
+}
+
+.userPhone {
+  font-size: $font-size-md;
+  color: $color-text-secondary;
+}
+
+.defaultTag {
+  padding: $spacing-xs $spacing-sm;
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  color: $color-text-white;
+  font-size: $font-size-xs;
+  border-radius: $radius-xs;
+  margin-left: $spacing-sm;
+}
+
+.addressContent {
+  font-size: $font-size-md;
+  color: $color-text-secondary;
+  line-height: $line-height-normal;
+  margin-bottom: $spacing-md;
+}
+
+.addressActions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: $spacing-md;
+  border-top: 1rpx solid $color-divider;
+}
+
+.actionLeft {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+}
+
+.defaultCheckbox {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: $radius-round;
+  border: 2rpx solid $color-divider;
+  @include flex-center;
+  font-size: $font-size-sm;
+  transition: all $transition-base;
+
+  &.checked {
+    background: $color-primary;
+    border-color: $color-primary;
+    color: $color-text-white;
+  }
+}
+
+.defaultLabel {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.actionRight {
+  display: flex;
+  gap: $spacing-lg;
+}
+
+.actionBtn {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  transition: all $transition-base;
+
+  &:active {
+    color: $color-primary;
+  }
+}
+
+.actionIcon {
+  font-size: $font-size-md;
+}
+
+.editBtn {
+  &:active {
+    color: $color-primary;
+  }
+}
+
+.deleteBtn {
+  &:active {
+    color: $color-error;
+  }
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-xxl * 2 0;
+}
+
+.emptyIcon {
+  font-size: 120rpx;
+  margin-bottom: $spacing-lg;
+  opacity: 0.5;
+}
+
+.emptyText {
+  font-size: $font-size-md;
+  color: $color-text-tertiary;
+  margin-bottom: $spacing-xl;
+}
+
+.addBtn {
+  @include button-reset;
+  padding: $spacing-md $spacing-xl;
+  border-radius: $radius-button;
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  color: $color-text-white;
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  transition: all $transition-base;
+
+  &:active {
+    opacity: 0.9;
+    transform: scale(0.98);
+  }
+}
+
+.floatingAddBtn {
+  position: fixed;
+  bottom: calc(env(safe-area-inset-bottom) + #{$spacing-lg});
+  left: $page-padding;
+  right: $page-padding;
+  @include button-reset;
+  height: $button-height-lg;
+  border-radius: $radius-button;
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  color: $color-text-white;
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  box-shadow: $shadow-float;
+  transition: all $transition-base;
+  z-index: 100;
+
+  &:active {
+    opacity: 0.9;
+    transform: scale(0.98);
+  }
+}
+
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  @include flex-center;
+  z-index: 1000;
+}
+
+.modalContent {
+  width: 90%;
+  max-width: 640rpx;
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-xl;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.modalTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+  text-align: center;
+  margin-bottom: $spacing-xl;
+}
+
+.formGroup {
+  margin-bottom: $spacing-lg;
+}
+
+.formLabel {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  margin-bottom: $spacing-sm;
+  display: block;
+}
+
+.formInput {
+  width: 100%;
+  height: 88rpx;
+  padding: 0 $spacing-md;
+  border: 2rpx solid $color-divider;
+  border-radius: $radius-md;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  background: $color-bg-page;
+  transition: all $transition-base;
+
+  &:focus {
+    border-color: $color-primary;
+  }
+}
+
+.formRow {
+  display: flex;
+  gap: $spacing-md;
+}
+
+.formHalf {
+  flex: 1;
+}
+
+.defaultSwitch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $spacing-md 0;
+}
+
+.switchLabel {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+}
+
+.switchBtn {
+  width: 88rpx;
+  height: 48rpx;
+  border-radius: $radius-round;
+  background: $color-divider;
+  position: relative;
+  transition: all $transition-base;
+
+  &.active {
+    background: $color-primary;
+  }
+}
+
+.switchDot {
+  position: absolute;
+  top: 4rpx;
+  left: 4rpx;
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: $radius-round;
+  background: $color-text-white;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.15);
+  transition: all $transition-base;
+
+  .active & {
+    left: 44rpx;
+  }
+}
+
+.modalActions {
+  display: flex;
+  gap: $spacing-md;
+  margin-top: $spacing-xl;
+}
+
+.modalBtn {
+  @include button-reset;
+  flex: 1;
+  height: $button-height-md;
+  border-radius: $radius-button;
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.modalCancel {
+  background: $color-bg-page;
+  color: $color-text-secondary;
+  border: 2rpx solid $color-divider;
+}
+
+.modalConfirm {
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  color: $color-text-white;
+}
+
+.countryFlag {
+  font-size: 40rpx;
+  margin-right: $spacing-sm;
+}
+
+.addressDetail {
+  display: flex;
+  align-items: flex-start;
+  gap: $spacing-xs;
+}

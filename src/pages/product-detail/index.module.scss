@@ -1,0 +1,397 @@
+@use '@/styles/variables.scss' as *;
+
+.detailPage {
+  min-height: 100vh;
+  background: $color-bg-page;
+  padding-bottom: 140rpx;
+}
+
+.imageSection {
+  background: $color-bg-card;
+  position: relative;
+}
+
+.productImage {
+  width: 100%;
+  height: 750rpx;
+}
+
+.imageIndicator {
+  position: absolute;
+  bottom: $spacing-md;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.5);
+  color: $color-text-white;
+  padding: $spacing-xs $spacing-md;
+  border-radius: $radius-round;
+  font-size: $font-size-xs;
+}
+
+.infoSection {
+  background: $color-bg-card;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-md;
+}
+
+.priceRow {
+  display: flex;
+  align-items: baseline;
+  gap: $spacing-md;
+  margin-bottom: $spacing-md;
+}
+
+.price {
+  font-size: $font-size-xxl;
+  font-weight: $font-weight-bold;
+  color: $color-price;
+}
+
+.originalPrice {
+  font-size: $font-size-md;
+  color: $color-text-tertiary;
+  text-decoration: line-through;
+}
+
+.wholesaleBadge {
+  padding: $spacing-xs $spacing-sm;
+  background: rgba($color-success, 0.1);
+  color: $color-success;
+  font-size: $font-size-xs;
+  border-radius: $radius-sm;
+}
+
+.priceSwitch {
+  display: flex;
+  background: $color-bg-page;
+  border-radius: $radius-md;
+  padding: $spacing-xs;
+  margin-bottom: $spacing-md;
+}
+
+.switchItem {
+  flex: 1;
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: $radius-sm;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  transition: all $transition-base;
+}
+
+.switchItemActive {
+  background: $color-bg-card;
+  color: $color-primary;
+  font-weight: $font-weight-medium;
+  box-shadow: $shadow-sm;
+}
+
+.productTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-medium;
+  color: $color-text-primary;
+  line-height: 1.6;
+  margin-bottom: $spacing-sm;
+}
+
+.productSubtitle {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  line-height: 1.6;
+  margin-bottom: $spacing-md;
+}
+
+.productMeta {
+  display: flex;
+  gap: $spacing-lg;
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}
+
+.specSection {
+  background: $color-bg-card;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-md;
+}
+
+.sectionTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  color: $color-text-primary;
+  margin-bottom: $spacing-lg;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.selectedSpec {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.specGroup {
+  margin-bottom: $spacing-md;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.specLabel {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  margin-bottom: $spacing-md;
+}
+
+.specOptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-md;
+}
+
+.specOption {
+  padding: $spacing-sm $spacing-lg;
+  border: 1rpx solid $color-divider;
+  border-radius: $radius-md;
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+.specOptionActive {
+  border-color: $color-primary;
+  background: rgba($color-primary, 0.05);
+  color: $color-primary;
+}
+
+.specOptionDisabled {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+.quantitySection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: $spacing-md;
+  border-top: 1rpx solid $color-divider;
+  margin-top: $spacing-md;
+}
+
+.quantityLabel {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.quantityControl {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+}
+
+.quantityBtn {
+  @include button-reset;
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: $radius-sm;
+  background: $color-bg-page;
+  font-size: $font-size-lg;
+  color: $color-text-primary;
+  @include flex-center;
+}
+
+.quantityBtnDisabled {
+  opacity: 0.3;
+}
+
+.quantityValue {
+  min-width: 80rpx;
+  text-align: center;
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+}
+
+.stockInfo {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}
+
+.shopSection {
+  background: $color-bg-card;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-md;
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+}
+
+.shopAvatar {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: $radius-md;
+  background: $color-bg-page;
+  @include flex-center;
+  font-size: 48rpx;
+  flex-shrink: 0;
+}
+
+.shopInfo {
+  flex: 1;
+}
+
+.shopName {
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  color: $color-text-primary;
+  margin-bottom: $spacing-xs;
+}
+
+.shopDesc {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}
+
+.enterShopBtn {
+  @include button-reset;
+  height: 56rpx;
+  padding: 0 $spacing-lg;
+  border-radius: $radius-button;
+  background: transparent;
+  border: 1rpx solid $color-primary;
+  color: $color-primary;
+  font-size: $font-size-sm;
+}
+
+.detailSection {
+  background: $color-bg-card;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-md;
+}
+
+.detailImage {
+  width: 100%;
+  margin-bottom: $spacing-md;
+  border-radius: $radius-md;
+}
+
+.detailText {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  line-height: 1.8;
+}
+
+.bottomBar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 120rpx;
+  background: $color-bg-card;
+  padding: 0 $spacing-lg;
+  padding-bottom: env(safe-area-inset-bottom);
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.08);
+  z-index: 100;
+}
+
+.actionIcons {
+  display: flex;
+  gap: $spacing-xl;
+}
+
+.actionIcon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4rpx;
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  position: relative;
+}
+
+.icon {
+  font-size: 40rpx;
+}
+
+.cartBadge {
+  position: absolute;
+  top: -8rpx;
+  right: -8rpx;
+  min-width: 32rpx;
+  height: 32rpx;
+  padding: 0 6rpx;
+  background: $color-error;
+  color: $color-text-white;
+  font-size: 18rpx;
+  border-radius: $radius-round;
+  @include flex-center;
+}
+
+.actionBtns {
+  flex: 1;
+  display: flex;
+  gap: $spacing-md;
+}
+
+.addCartBtn {
+  @include button-reset;
+  flex: 1;
+  height: 80rpx;
+  border-radius: $radius-button;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: $color-text-white;
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+}
+
+.buyNowBtn {
+  @include button-reset;
+  flex: 1;
+  height: 80rpx;
+  border-radius: $radius-button;
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  color: $color-text-white;
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+}
+
+.tagList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-md;
+}
+
+.tag {
+  padding: $spacing-xs $spacing-sm;
+  border-radius: $radius-sm;
+  font-size: $font-size-xs;
+}
+
+.tagHot {
+  background: rgba($color-error, 0.1);
+  color: $color-error;
+}
+
+.tagNew {
+  background: rgba($color-success, 0.1);
+  color: $color-success;
+}
+
+.tagRecommend {
+  background: rgba($color-primary, 0.1);
+  color: $color-primary;
+}
+
+.tagSale {
+  background: rgba(#f59e0b, 0.1);
+  color: #f59e0b;
+}

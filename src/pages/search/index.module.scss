@@ -1,0 +1,296 @@
+@use '@/styles/variables.scss' as *;
+
+.searchPage {
+  min-height: 100vh;
+  background: $color-bg-page;
+  padding-bottom: calc(env(safe-area-inset-bottom) + #{$spacing-xl});
+}
+
+.searchHeader {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: $color-bg-card;
+  padding: $spacing-md $page-padding;
+  padding-top: calc(env(safe-area-inset-top) + #{$spacing-md});
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  box-shadow: $shadow-float;
+}
+
+.searchInputWrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  height: 72rpx;
+  background: $color-bg-page;
+  border-radius: $radius-button;
+  padding: 0 $spacing-lg;
+  gap: $spacing-sm;
+}
+
+.searchIcon {
+  font-size: $font-size-lg;
+  color: $color-text-tertiary;
+}
+
+.searchInput {
+  flex: 1;
+  height: 100%;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  background: transparent;
+}
+
+.clearBtn {
+  @include button-reset;
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  background: $color-border;
+  color: $color-text-white;
+  font-size: $font-size-xs;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cancelBtn {
+  @include button-reset;
+  height: 72rpx;
+  padding: 0 $spacing-md;
+  font-size: $font-size-md;
+  color: $color-primary;
+  background: transparent;
+}
+
+.filterBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  height: 80rpx;
+  background: $color-bg-card;
+  padding: 0 $page-padding;
+  border-top: 1rpx solid $color-border;
+}
+
+.filterItem {
+  flex: 1;
+  text-align: center;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4rpx;
+  transition: all $transition-fast;
+
+  &.active {
+    color: $color-primary;
+    font-weight: $font-weight-medium;
+  }
+}
+
+.filterIcon {
+  font-size: $font-size-xs;
+}
+
+.content {
+  padding: 0 $page-padding;
+}
+
+.historySection {
+  padding: $spacing-lg 0;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-md;
+}
+
+.sectionTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+}
+
+.sectionIcon {
+  font-size: $font-size-md;
+}
+
+.clearHistoryBtn {
+  @include button-reset;
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+}
+
+.tagList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-sm;
+}
+
+.tagItem {
+  @include button-reset;
+  height: 64rpx;
+  padding: 0 $spacing-md;
+  border-radius: $radius-button;
+  background: $color-bg-card;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  transition: all $transition-fast;
+
+  &:active {
+    background: rgba(37, 99, 235, 0.1);
+    color: $color-primary;
+  }
+}
+
+.hotTagItem {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #92400e;
+  font-weight: $font-weight-medium;
+}
+
+.hotSection {
+  padding: $spacing-lg 0;
+}
+
+.hotList {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+}
+
+.hotItem {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  padding: $spacing-md 0;
+  border-bottom: 1rpx solid $color-border;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:active {
+    background: rgba(0, 0, 0, 0.02);
+  }
+}
+
+.hotRank {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: $radius-sm;
+  @include flex-center;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-bold;
+  color: $color-text-white;
+}
+
+.rank1 {
+  background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
+}
+
+.rank2 {
+  background: linear-gradient(135deg, #f97316 0%, #fb923c 100%);
+}
+
+.rank3 {
+  background: linear-gradient(135deg, #eab308 0%, #facc15 100%);
+}
+
+.rankOther {
+  background: $color-border;
+  color: $color-text-secondary;
+}
+
+.hotKeyword {
+  flex: 1;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+}
+
+.hotMeta {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-left: $spacing-sm;
+}
+
+.hotBadge {
+  font-size: $font-size-xs;
+  padding: 4rpx $spacing-sm;
+  border-radius: $radius-xs;
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  color: $color-error;
+  font-weight: $font-weight-medium;
+}
+
+.resultsSection {
+  padding: $spacing-md 0;
+}
+
+.resultsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-md;
+}
+
+.resultsCount {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}
+
+.productGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-md;
+}
+
+.productGridItem {
+  width: calc(50% - #{$spacing-sm});
+}
+
+.loadingMore {
+  text-align: center;
+  padding: $spacing-lg;
+  color: $color-text-tertiary;
+  font-size: $font-size-sm;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-xl * 2;
+  text-align: center;
+}
+
+.emptyIcon {
+  font-size: 120rpx;
+  margin-bottom: $spacing-md;
+  opacity: 0.5;
+}
+
+.emptyText {
+  font-size: $font-size-md;
+  color: $color-text-tertiary;
+  margin-bottom: $spacing-sm;
+}
+
+.emptyTip {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}

@@ -1,0 +1,259 @@
+@use '@/styles/variables.scss' as *;
+
+.realnameAuthPage {
+  min-height: 100vh;
+  background: $color-bg-page;
+  padding: $page-padding;
+  padding-bottom: calc(env(safe-area-inset-bottom) + #{$spacing-xxl});
+}
+
+.statusCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-xl;
+  margin-bottom: $spacing-lg;
+  box-shadow: $shadow-card;
+}
+
+.statusHeader {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  margin-bottom: $spacing-md;
+}
+
+.statusIcon {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: $radius-round;
+  @include flex-center;
+  font-size: 48rpx;
+
+  &.approved {
+    background: rgba(16, 185, 129, 0.1);
+    color: $color-success;
+  }
+
+  &.pending {
+    background: rgba(245, 158, 11, 0.1);
+    color: $color-warning;
+  }
+
+  &.rejected {
+    background: rgba(239, 68, 68, 0.1);
+    color: $color-error;
+  }
+
+  &.not_submitted {
+    background: rgba(148, 163, 184, 0.1);
+    color: $color-text-tertiary;
+  }
+}
+
+.statusInfo {
+  flex: 1;
+}
+
+.statusTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-xs;
+}
+
+.statusDesc {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.rejectedReason {
+  margin-top: $spacing-md;
+  padding: $spacing-md;
+  background: rgba(239, 68, 68, 0.08);
+  border-radius: $radius-md;
+  color: $color-error;
+  font-size: $font-size-sm;
+}
+
+.formCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-xl;
+  margin-bottom: $spacing-lg;
+  box-shadow: $shadow-card;
+}
+
+.sectionTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-lg;
+}
+
+.uploadSection {
+  margin-bottom: $spacing-xl;
+}
+
+.uploadRow {
+  display: flex;
+  gap: $spacing-lg;
+}
+
+.uploadItem {
+  flex: 1;
+}
+
+.uploadLabel {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  margin-bottom: $spacing-sm;
+  display: block;
+}
+
+.uploadBox {
+  width: 100%;
+  aspect-ratio: 1.6;
+  border: 2rpx dashed $color-divider;
+  border-radius: $radius-md;
+  @include flex-center;
+  flex-direction: column;
+  gap: $spacing-sm;
+  background: $color-bg-page;
+  transition: all $transition-base;
+  overflow: hidden;
+  position: relative;
+
+  &:active {
+    border-color: $color-primary;
+    background: rgba(59, 130, 246, 0.05);
+  }
+}
+
+.uploadPreview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.uploadPlaceholder {
+  @include flex-center;
+  flex-direction: column;
+  gap: $spacing-sm;
+  padding: $spacing-lg;
+  text-align: center;
+}
+
+.uploadIcon {
+  font-size: 56rpx;
+  opacity: 0.5;
+}
+
+.uploadText {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}
+
+.uploadRemove {
+  position: absolute;
+  top: $spacing-sm;
+  right: $spacing-sm;
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: $radius-round;
+  background: rgba(0, 0, 0, 0.6);
+  color: $color-text-white;
+  @include flex-center;
+  font-size: $font-size-sm;
+  z-index: 1;
+}
+
+.formGroup {
+  margin-bottom: $spacing-lg;
+}
+
+.formLabel {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  margin-bottom: $spacing-sm;
+  display: block;
+}
+
+.formInput {
+  width: 100%;
+  height: 88rpx;
+  padding: 0 $spacing-md;
+  border: 2rpx solid $color-divider;
+  border-radius: $radius-md;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  background: $color-bg-page;
+  transition: all $transition-base;
+
+  &:focus {
+    border-color: $color-primary;
+  }
+}
+
+.inputDisabled {
+  background: $color-bg-hover;
+  color: $color-text-tertiary;
+}
+
+.tipCard {
+  background: rgba(59, 130, 246, 0.08);
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-xl;
+}
+
+.tipTitle {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-primary;
+  margin-bottom: $spacing-sm;
+}
+
+.tipList {
+  padding-left: $spacing-lg;
+}
+
+.tipItem {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  line-height: $line-height-loose;
+  margin-bottom: $spacing-xs;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.submitBtn {
+  @include button-reset;
+  width: 100%;
+  height: $button-height-lg;
+  border-radius: $radius-button;
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  color: $color-text-white;
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  transition: all $transition-base;
+
+  &:active {
+    opacity: 0.9;
+    transform: scale(0.98);
+  }
+
+  &.disabled {
+    background: $color-divider;
+    color: $color-text-tertiary;
+  }
+}
+
+.disabledForm {
+  opacity: 0.6;
+  pointer-events: none;
+}
