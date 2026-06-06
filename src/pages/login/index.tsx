@@ -14,7 +14,7 @@ import { useUserStore } from '@/store/useUserStore';
 
 const LoginPage: React.FC = () => {
   const t = useTranslation();
-  const { login } = useUserStore();
+  const { login, register, isLoading } = useUserStore();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
@@ -41,7 +41,7 @@ const LoginPage: React.FC = () => {
     console.log('[LoginPage] Send code to:', phone);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!phone || phone.length !== 11) {
       Taro.showToast({ title: '请输入正确的手机号', icon: 'none' });
       return;
@@ -61,36 +61,37 @@ const LoginPage: React.FC = () => {
 
     console.log('[LoginPage] Submit:', { mode, phone, code, password });
     
-    login({
-      id: Date.now().toString(),
-      phone,
-      nickname: mode === 'register' ? `用户${phone.slice(-4)}` : '跨境买家',
-      avatar: 'https://placehold.co/140x140/e0f2fe/2563eb?text=👤',
-      isLoggedIn: true,
-      isVerified: true,
-      realnameStatus: 'not_submitted',
-      language: 'zh',
-      currency: 'CNY',
-      totalSpent: 8650,
-      memberLevel: 'silver',
-      coupons: 5,
-      points: 1280,
-      hasShop: false,
-      isAdmin: false,
-      createdAt: new Date().toISOString()
-    });
+    Taro.showLoading({ title: mode === 'login' ? '登录中...' : '注册中...' });
+    
+    try {
+      let success: boolean;
+      if (mode === 'login') {
+        success = await login(phone, password);
+      } else {
+        success = await register(phone, password, `用户${phone.slice(-4)}`);
+      }
 
-    Taro.showToast({ title: mode === 'login' ? '登录成功' : '注册成功', icon: 'success' });
-    setTimeout(() => {
-      Taro.switchTab({ url: '/pages/home/index' });
-    }, 1000);
+      Taro.hideLoading();
+      
+      if (success) {
+        Taro.showToast({ title: mode === 'login' ? '登录成功' : '注册成功', icon: 'success' });
+        setTimeout(() => {
+          Taro.switchTab({ url: '/pages/home/index' });
+        }, 1000);
+      } else {
+        Taro.showToast({ title: mode === 'login' ? '登录失败' : '注册失败', icon: 'error' });
+      }
+    } catch (error: any) {
+      Taro.hideLoading();
+      Taro.showToast({ title: error.message || '操作失败', icon: 'none' });
+    }
   };
 
   const handleBack = () => {
     Taro.navigateBack();
   };
 
-  const canSubmit = phone.length === 11 && agree;
+  const canSubmit = phone.length === 11 && agree && !isLoading;
 
   return (
     <View className={styles.loginPage}>
