@@ -121,34 +121,39 @@ const PaymentPage: React.FC = () => {
   }, [orders, cartItems, totalAmount]);
 
   useEffect(() => {
-    console.log('[PaymentPage] Mounted');
-    
-    const { orderIds: orderIdsParam, totalAmount: totalAmountParam } = router.params;
-    
-    if (orderIdsParam) {
-      try {
-        const parsedOrderIds = JSON.parse(decodeURIComponent(orderIdsParam));
-        setOrderIds(parsedOrderIds);
-        console.log('[PaymentPage] Parsed orderIds:', parsedOrderIds);
-        
-        const loadedOrders = parsedOrderIds.map((id: string) => getOrderDetail(id)).filter(Boolean);
-        setOrders(loadedOrders);
-        console.log('[PaymentPage] Loaded orders:', loadedOrders.length);
-      } catch (e) {
-        console.error('[PaymentPage] Failed to parse orderIds:', e);
+    const loadOrders = async () => {
+      console.log('[PaymentPage] Mounted');
+      
+      const { orderIds: orderIdsParam, totalAmount: totalAmountParam } = router.params;
+      
+      if (orderIdsParam) {
+        try {
+          const parsedOrderIds = JSON.parse(decodeURIComponent(orderIdsParam));
+          setOrderIds(parsedOrderIds);
+          console.log('[PaymentPage] Parsed orderIds:', parsedOrderIds);
+          
+          const loadedOrdersPromises = parsedOrderIds.map((id: string) => getOrderDetail(id));
+          const loadedOrders = (await Promise.all(loadedOrdersPromises)).filter(Boolean);
+          setOrders(loadedOrders);
+          console.log('[PaymentPage] Loaded orders:', loadedOrders.length);
+        } catch (e) {
+          console.error('[PaymentPage] Failed to parse orderIds:', e);
+        }
       }
-    }
+      
+      if (totalAmountParam) {
+        const parsedAmount = parseFloat(decodeURIComponent(totalAmountParam));
+        setTotalAmount(parsedAmount);
+        console.log('[PaymentPage] Parsed totalAmount:', parsedAmount);
+      }
+      
+      console.log('[PaymentPage] Cart items count:', cartItems.length);
+      if (cartItems.length === 0 && orders.length === 0) {
+        console.warn('[PaymentPage] No items selected for payment');
+      }
+    };
     
-    if (totalAmountParam) {
-      const parsedAmount = parseFloat(decodeURIComponent(totalAmountParam));
-      setTotalAmount(parsedAmount);
-      console.log('[PaymentPage] Parsed totalAmount:', parsedAmount);
-    }
-    
-    console.log('[PaymentPage] Cart items count:', cartItems.length);
-    if (cartItems.length === 0 && orders.length === 0) {
-      console.warn('[PaymentPage] No items selected for payment');
-    }
+    loadOrders();
   }, [router.params, getOrderDetail, cartItems.length, orders.length]);
 
   const handleAddressClick = () => {

@@ -1,13 +1,147 @@
 import type { User, Order, ReturnRequest, DashboardStats, MonthlyReport } from '@/types';
 import type { Product } from '@/types/product';
 
+// ============================================
+// API 配置 - 可通过环境变量或全局配置修改
+// ============================================
+
+export const API_CONFIG = {
+  BASE_URL: (typeof process !== 'undefined' && process.env?.REACT_APP_API_URL) || 
+            (typeof window !== 'undefined' && (window as any).__API_BASE_URL__) || 
+            '',
+  
+  TIMEOUT: 15000,
+  
+  get isMockMode(): boolean {
+    return !this.BASE_URL || this.BASE_URL.trim() === '';
+  }
+};
+
+// 设置API地址的方法（支持运行时动态修改）
+export const setApiBaseUrl = (url: string): void => {
+  API_CONFIG.BASE_URL = url;
+  console.log('[ApiConfig] API Base URL updated to:', url);
+};
+
 const STORAGE_KEYS = {
   USERS: 'gb2c_users',
   ORDERS: 'gb2c_orders',
   PAYMENTS: 'gb2c_payments',
   RETURNS: 'gb2c_returns',
-  REALNAME_AUTH: 'gb2c_realname_auth'
+  REALNAME_AUTH: 'gb2c_realname_auth',
+  AUTH_TOKEN: 'gb2c_auth_token'
 } as const;
+
+// ============================================
+// Fetch 请求封装
+// ============================================
+
+interface FetchOptions extends RequestInit {
+  headers?: Record<string, string>;
+  body?: any;
+}
+
+interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  message: string;
+  code?: number;
+}
+
+const getAuthToken = (): string | null => {
+  try {
+    return localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+  } catch {
+    return null;
+  }
+};
+
+const setAuthToken = (token: string): void => {
+  try {
+    localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
+  } catch (error) {
+    console.error('[ApiService] Failed to save auth token:', error);
+  }
+};
+
+const clearAuthToken = (): void => {
+  try {
+    localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+  } catch (error) {
+    console.error('[ApiService] Failed to clear auth token:', error);
+  }
+};
+
+const apiFetch = async <T = any>(
+  endpoint: string,
+  options: FetchOptions = {}
+): Promise<ApiResponse<T>> => {
+  if (API_CONFIG.isMockMode) {
+    console.warn('[ApiService] Running in MOCK mode - set API_BASE_URL to use real API');
+    throw new Error('API is in mock mode');
+  }
+
+  const url = API_CONFIG.BASE_URL + endpoint;
+  const token = getAuthToken();
+  
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...options.headers
+  };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  console.log(`[ApiService] ${options.method || 'GET'} ${url}`);
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
+
+    const response = await fetch(url, {
+      ...options,
+      headers,
+      body: options.body ? JSON.stringify(options.body) : undefined,
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      console.error(`[ApiService] HTTP Error ${response.status}:`, errorText);
+      return {
+        success: false,
+        message: `请求失败 (${response.status})`,
+        code: response.status
+      };
+    }
+
+    const data = await response.json();
+    console.log(`[ApiService] Response:`, data);
+
+    return data as ApiResponse<T>;
+  } catch (error: any) {
+    console.error('[ApiService] Request failed:', error);
+    
+    if (error.name === 'AbortError') {
+      return {
+        success: false,
+        message: '请求超时，请重试'
+      };
+    }
+    
+    return {
+      success: false,
+      message: error.message || '网络请求失败'
+    };
+  }
+};
+
+// ============================================
+// Mock 模式辅助函数（兼容旧代码）
+// ============================================
 
 const simulateNetworkDelay = async (): Promise<void> => {
   const delay = Math.floor(Math.random() * 500) + 300;
@@ -377,11 +511,32 @@ export const initMockData = (): void => {
 };
 
 export const userService = {
-  async login(phone: string, password: string): Promise<{ success: boolean; user?: User; message: string }> {
+  async login(phone: string, password: string): Promise<{ success: boolean; user?: User; message: string; token?: string }> {
     console.log('[ApiService][User] Login attempt:', { phone });
-    await simulateNetworkDelay();
 
     try {
+      if (!API_CONFIG.isMockMode) {
+        const response = await apiFetch<{ user: User; token: string }>('/api/auth/login', {
+          method: 'POST',
+          body: { phone, password }
+        });
+
+        if (response.success && response.data) {
+          if (response.data.token) {
+            setAuthToken(response.data.token);
+          }
+          return {
+            success: true,
+            user: response.data.user,
+            token: response.data.token,
+            message: response.message || '登录成功'
+          };
+        }
+        return { success: false, message: response.message || '登录失败' };
+      }
+
+      console.log('[ApiService][User] Mock mode: Using localStorage');
+      await simulateNetworkDelay();
       const users = loadData<User>(STORAGE_KEYS.USERS);
       const user = users.find(u => u.phone === phone);
 
@@ -390,19 +545,43 @@ export const userService = {
         return { success: false, message: '用户不存在' };
       }
 
+      const mockToken = 'mock_token_' + Date.now();
+      setAuthToken(mockToken);
+
       console.log('[ApiService][User] Login successful:', user.id);
-      return { success: true, user, message: '登录成功' };
+      return { success: true, user, token: mockToken, message: '登录成功' };
     } catch (error) {
       console.error('[ApiService][User] Login error:', error);
       return { success: false, message: '登录失败，请稍后重试' };
     }
   },
 
-  async register(phone: string, password: string, nickname: string): Promise<{ success: boolean; user?: User; message: string }> {
+  async register(phone: string, password: string, nickname: string): Promise<{ success: boolean; user?: User; message: string; token?: string }> {
     console.log('[ApiService][User] Register attempt:', { phone, nickname });
-    await simulateNetworkDelay();
 
     try {
+      if (!API_CONFIG.isMockMode) {
+        const response = await apiFetch<{ user: User; token: string }>('/api/auth/register', {
+          method: 'POST',
+          body: { phone, password, nickname }
+        });
+
+        if (response.success && response.data) {
+          if (response.data.token) {
+            setAuthToken(response.data.token);
+          }
+          return {
+            success: true,
+            user: response.data.user,
+            token: response.data.token,
+            message: response.message || '注册成功'
+          };
+        }
+        return { success: false, message: response.message || '注册失败' };
+      }
+
+      console.log('[ApiService][User] Mock mode: Using localStorage');
+      await simulateNetworkDelay();
       const users = loadData<User>(STORAGE_KEYS.USERS);
       const existingUser = users.find(u => u.phone === phone);
 
@@ -442,8 +621,11 @@ export const userService = {
       users.push(newUser);
       saveData(STORAGE_KEYS.USERS, users);
 
+      const mockToken = 'mock_token_' + Date.now();
+      setAuthToken(mockToken);
+
       console.log('[ApiService][User] Register successful:', newUser.id);
-      return { success: true, user: newUser, message: '注册成功' };
+      return { success: true, user: newUser, token: mockToken, message: '注册成功' };
     } catch (error) {
       console.error('[ApiService][User] Register error:', error);
       return { success: false, message: '注册失败，请稍后重试' };
@@ -458,9 +640,18 @@ export const userService = {
     idCardBack: string
   ): Promise<{ success: boolean; message: string }> {
     console.log('[ApiService][User] Submit realname auth:', { userId, name });
-    await simulateNetworkDelay();
 
     try {
+      if (!API_CONFIG.isMockMode) {
+        const response = await apiFetch('/api/user/realname-auth', {
+          method: 'POST',
+          body: { userId, name, idCard, idCardFront, idCardBack }
+        });
+        return { success: response.success, message: response.message || '提交成功' };
+      }
+
+      console.log('[ApiService][User] Mock mode: Using localStorage');
+      await simulateNetworkDelay();
       const users = loadData<User>(STORAGE_KEYS.USERS);
       const userIndex = users.findIndex(u => u.id === userId);
 
@@ -500,9 +691,18 @@ export const userService = {
 
   async getUserProfile(userId: string): Promise<{ success: boolean; user?: User; message: string }> {
     console.log('[ApiService][User] Get user profile:', userId);
-    await simulateNetworkDelay();
 
     try {
+      if (!API_CONFIG.isMockMode) {
+        const response = await apiFetch<User>(`/api/user/profile/${userId}`);
+        if (response.success && response.data) {
+          return { success: true, user: response.data, message: '获取成功' };
+        }
+        return { success: false, message: response.message || '获取失败' };
+      }
+
+      console.log('[ApiService][User] Mock mode: Using localStorage');
+      await simulateNetworkDelay();
       const users = loadData<User>(STORAGE_KEYS.USERS);
       const user = users.find(u => u.id === userId);
 
@@ -517,15 +717,93 @@ export const userService = {
       console.error('[ApiService][User] Get profile error:', error);
       return { success: false, message: '获取失败，请稍后重试' };
     }
+  },
+
+  async updateMemberLevel(userId: string, tradeAmount: number): Promise<{ success: boolean; user?: User; message: string }> {
+    console.log('[ApiService][User] Update member level:', { userId, tradeAmount });
+
+    try {
+      if (!API_CONFIG.isMockMode) {
+        const response = await apiFetch<User>('/api/user/update-member-level', {
+          method: 'POST',
+          body: { userId, tradeAmount }
+        });
+        if (response.success && response.data) {
+          return { success: true, user: response.data, message: '会员等级更新成功' };
+        }
+        return { success: false, message: response.message || '更新失败' };
+      }
+
+      console.log('[ApiService][User] Mock mode: Using localStorage');
+      await simulateNetworkDelay();
+      const users = loadData<User>(STORAGE_KEYS.USERS);
+      const userIndex = users.findIndex(u => u.id === userId);
+
+      if (userIndex === -1) {
+        return { success: false, message: '用户不存在' };
+      }
+
+      const { calculateMemberLevel } = await import('@/services/memberService');
+      const newTotal = users[userIndex].totalTradeAmount + tradeAmount;
+      const levelInfo = calculateMemberLevel(newTotal);
+
+      users[userIndex].totalTradeAmount = newTotal;
+      users[userIndex].memberLevel = levelInfo.level;
+      users[userIndex].memberLevelText = levelInfo.config.name;
+      users[userIndex].nextLevelAmount = levelInfo.nextLevelAmount;
+      users[userIndex].levelProgress = levelInfo.progress;
+      users[userIndex].couponCount = levelInfo.config.couponCount;
+      users[userIndex].freeReturnCount = levelInfo.config.freeReturnCount;
+
+      saveData(STORAGE_KEYS.USERS, users);
+
+      return { success: true, user: users[userIndex], message: '会员等级更新成功' };
+    } catch (error) {
+      console.error('[ApiService][User] Update member level error:', error);
+      return { success: false, message: '更新失败，请稍后重试' };
+    }
+  },
+
+  async logout(): Promise<{ success: boolean; message: string }> {
+    console.log('[ApiService][User] Logout');
+
+    try {
+      if (!API_CONFIG.isMockMode) {
+        await apiFetch('/api/auth/logout', { method: 'POST' });
+      }
+
+      clearAuthToken();
+      return { success: true, message: '登出成功' };
+    } catch (error) {
+      console.error('[ApiService][User] Logout error:', error);
+      clearAuthToken();
+      return { success: true, message: '登出成功' };
+    }
   }
 };
 
 export const orderService = {
   async createOrder(orderData: Partial<Order>): Promise<{ success: boolean; order?: Order; message: string }> {
     console.log('[ApiService][Order] Creating order:', orderData);
-    await simulateNetworkDelay();
 
     try {
+      if (!API_CONFIG.isMockMode) {
+        const response = await apiFetch<Order>('/api/orders', {
+          method: 'POST',
+          body: orderData
+        });
+
+        if (response.success && response.data) {
+          return {
+            success: true,
+            order: response.data,
+            message: response.message || '订单创建成功'
+          };
+        }
+        return { success: false, message: response.message || '订单创建失败' };
+      }
+
+      await simulateNetworkDelay();
       const orders = loadData<Order>(STORAGE_KEYS.ORDERS);
       const orderNo = 'GS' + Date.now();
 
@@ -577,9 +855,22 @@ export const orderService = {
 
   async getOrders(userId: string, status?: string): Promise<{ success: boolean; orders: Order[]; message: string }> {
     console.log('[ApiService][Order] Getting orders:', { userId, status });
-    await simulateNetworkDelay();
 
     try {
+      if (!API_CONFIG.isMockMode) {
+        const response = await apiFetch<Order[]>(`/api/orders?userId=${userId}&status=${status || ''}`);
+
+        if (response.success && response.data) {
+          return {
+            success: true,
+            orders: response.data,
+            message: response.message || '获取成功'
+          };
+        }
+        return { success: false, orders: [], message: response.message || '获取失败' };
+      }
+
+      await simulateNetworkDelay();
       const orders = loadData<Order>(STORAGE_KEYS.ORDERS);
       let userOrders = orders.filter(o => o.buyerId === userId);
 
@@ -599,9 +890,22 @@ export const orderService = {
 
   async getOrderDetail(orderId: string): Promise<{ success: boolean; order?: Order; message: string }> {
     console.log('[ApiService][Order] Getting order detail:', orderId);
-    await simulateNetworkDelay();
 
     try {
+      if (!API_CONFIG.isMockMode) {
+        const response = await apiFetch<Order>(`/api/orders/${orderId}`);
+
+        if (response.success && response.data) {
+          return {
+            success: true,
+            order: response.data,
+            message: response.message || '获取成功'
+          };
+        }
+        return { success: false, message: response.message || '获取失败' };
+      }
+
+      await simulateNetworkDelay();
       const orders = loadData<Order>(STORAGE_KEYS.ORDERS);
       const order = orders.find(o => o.id === orderId);
 
@@ -620,9 +924,20 @@ export const orderService = {
 
   async cancelOrder(orderId: string): Promise<{ success: boolean; message: string }> {
     console.log('[ApiService][Order] Cancelling order:', orderId);
-    await simulateNetworkDelay();
 
     try {
+      if (!API_CONFIG.isMockMode) {
+        const response = await apiFetch(`/api/orders/${orderId}/cancel`, {
+          method: 'POST'
+        });
+
+        return {
+          success: response.success,
+          message: response.message || (response.success ? '订单取消成功' : '订单取消失败')
+        };
+      }
+
+      await simulateNetworkDelay();
       const orders = loadData<Order>(STORAGE_KEYS.ORDERS);
       const orderIndex = orders.findIndex(o => o.id === orderId);
 
@@ -650,9 +965,20 @@ export const orderService = {
 
   async confirmOrderReceipt(orderId: string): Promise<{ success: boolean; message: string }> {
     console.log('[ApiService][Order] Confirming order receipt:', orderId);
-    await simulateNetworkDelay();
 
     try {
+      if (!API_CONFIG.isMockMode) {
+        const response = await apiFetch(`/api/orders/${orderId}/confirm`, {
+          method: 'POST'
+        });
+
+        return {
+          success: response.success,
+          message: response.message || (response.success ? '确认收货成功' : '确认收货失败')
+        };
+      }
+
+      await simulateNetworkDelay();
       const orders = loadData<Order>(STORAGE_KEYS.ORDERS);
       const orderIndex = orders.findIndex(o => o.id === orderId);
 
@@ -748,9 +1074,18 @@ export const adminService = {
     endDate?: string
   ): Promise<{ success: boolean; stats?: DashboardStats; message: string }> {
     console.log('[ApiService][Admin] Getting dashboard stats:', { country, startDate, endDate });
-    await simulateNetworkDelay();
 
     try {
+      if (!API_CONFIG.isMockMode) {
+        const response = await apiFetch<DashboardStats>(`/api/admin/dashboard?country=${country || ''}&startDate=${startDate || ''}&endDate=${endDate || ''}`);
+        if (response.success && response.data) {
+          return { success: true, stats: response.data, message: response.message || '获取成功' };
+        }
+        return { success: false, message: response.message || '获取失败' };
+      }
+
+      console.log('[ApiService][Admin] Mock mode: Using localStorage');
+      await simulateNetworkDelay();
       const orders = loadData<Order>(STORAGE_KEYS.ORDERS);
       const users = loadData<User>(STORAGE_KEYS.USERS);
       const returns = loadData<ReturnRequest>(STORAGE_KEYS.RETURNS);
@@ -806,9 +1141,18 @@ export const adminService = {
 
   async getMonthlyReport(month: string): Promise<{ success: boolean; report?: MonthlyReport; message: string }> {
     console.log('[ApiService][Admin] Getting monthly report:', month);
-    await simulateNetworkDelay();
 
     try {
+      if (!API_CONFIG.isMockMode) {
+        const response = await apiFetch<MonthlyReport>(`/api/admin/report/monthly?month=${month}`);
+        if (response.success && response.data) {
+          return { success: true, report: response.data, message: response.message || '获取成功' };
+        }
+        return { success: false, message: response.message || '获取失败' };
+      }
+
+      console.log('[ApiService][Admin] Mock mode: Using localStorage');
+      await simulateNetworkDelay();
       const report: MonthlyReport = {
         month,
         totalRevenue: 568900,
@@ -856,9 +1200,26 @@ export const adminService = {
 
   async exportReportCSV(reportData: any): Promise<{ success: boolean; csvContent?: string; filename?: string; message: string }> {
     console.log('[ApiService][Admin] Exporting report CSV:', reportData);
-    await simulateNetworkDelay();
 
     try {
+      if (!API_CONFIG.isMockMode) {
+        const response = await apiFetch<{ csvContent: string; filename: string }>('/api/admin/report/export', {
+          method: 'POST',
+          body: reportData
+        });
+        if (response.success && response.data) {
+          return {
+            success: true,
+            csvContent: response.data.csvContent,
+            filename: response.data.filename,
+            message: response.message || '导出成功'
+          };
+        }
+        return { success: false, message: response.message || '导出失败' };
+      }
+
+      console.log('[ApiService][Admin] Mock mode: Using localStorage');
+      await simulateNetworkDelay();
       const headers = Object.keys(reportData[0] || {}).join(',');
       const rows = reportData.map((row: any) =>
         Object.values(row).map(value => `"${value}"`).join(',')
@@ -878,9 +1239,26 @@ export const adminService = {
 export const returnService = {
   async createReturnRequest(returnData: Partial<ReturnRequest>): Promise<{ success: boolean; returnRequest?: ReturnRequest; message: string }> {
     console.log('[ApiService][Return] Creating return request:', returnData);
-    await simulateNetworkDelay();
 
     try {
+      if (!API_CONFIG.isMockMode) {
+        const response = await apiFetch<ReturnRequest>('/api/returns', {
+          method: 'POST',
+          body: returnData
+        });
+
+        if (response.success && response.data) {
+          return {
+            success: true,
+            returnRequest: response.data,
+            message: response.message || '退货申请提交成功'
+          };
+        }
+        return { success: false, message: response.message || '提交失败' };
+      }
+
+      console.log('[ApiService][Return] Mock mode: Using localStorage');
+      await simulateNetworkDelay();
       const returns = loadData<ReturnRequest>(STORAGE_KEYS.RETURNS);
       
       const now = new Date();
@@ -928,9 +1306,23 @@ export const returnService = {
 
   async getReturnRequests(userId: string): Promise<{ success: boolean; returns: ReturnRequest[]; message: string }> {
     console.log('[ApiService][Return] Getting return requests for user:', userId);
-    await simulateNetworkDelay();
 
     try {
+      if (!API_CONFIG.isMockMode) {
+        const response = await apiFetch<ReturnRequest[]>(`/api/returns?userId=${userId}`);
+
+        if (response.success && response.data) {
+          return {
+            success: true,
+            returns: response.data,
+            message: response.message || '获取成功'
+          };
+        }
+        return { success: false, returns: [], message: response.message || '获取失败' };
+      }
+
+      console.log('[ApiService][Return] Mock mode: Using localStorage');
+      await simulateNetworkDelay();
       const returns = loadData<ReturnRequest>(STORAGE_KEYS.RETURNS);
       const userReturns = returns.filter(r => r.buyerId === userId);
       userReturns.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -945,9 +1337,22 @@ export const returnService = {
 
   async escalateToPlatform(returnId: string, note?: string): Promise<{ success: boolean; message: string }> {
     console.log('[ApiService][Return] Escalating to platform:', returnId);
-    await simulateNetworkDelay();
 
     try {
+      if (!API_CONFIG.isMockMode) {
+        const response = await apiFetch(`/api/returns/${returnId}/escalate`, {
+          method: 'POST',
+          body: { note }
+        });
+
+        return {
+          success: response.success,
+          message: response.message || '已升级到平台审核'
+        };
+      }
+
+      console.log('[ApiService][Return] Mock mode: Using localStorage');
+      await simulateNetworkDelay();
       const returns = loadData<ReturnRequest>(STORAGE_KEYS.RETURNS);
       const returnIndex = returns.findIndex(r => r.id === returnId);
 
@@ -970,9 +1375,26 @@ export const returnService = {
 
   async approveReturn(returnId: string, isPlatform: boolean = false): Promise<{ success: boolean; returnRequest?: ReturnRequest; message: string }> {
     console.log('[ApiService][Return] Approving return:', returnId, 'isPlatform:', isPlatform);
-    await simulateNetworkDelay();
 
     try {
+      if (!API_CONFIG.isMockMode) {
+        const response = await apiFetch<ReturnRequest>(`/api/returns/${returnId}/approve`, {
+          method: 'POST',
+          body: { isPlatform }
+        });
+
+        if (response.success && response.data) {
+          return {
+            success: true,
+            returnRequest: response.data,
+            message: response.message || '退货申请已通过，快递将上门取件'
+          };
+        }
+        return { success: false, message: response.message || '审核失败' };
+      }
+
+      console.log('[ApiService][Return] Mock mode: Using localStorage');
+      await simulateNetworkDelay();
       const returns = loadData<ReturnRequest>(STORAGE_KEYS.RETURNS);
       const returnIndex = returns.findIndex(r => r.id === returnId);
 
@@ -1003,9 +1425,27 @@ export const returnService = {
 export const paymentService = {
   async createPaymentOrder(paymentData: any): Promise<{ success: boolean; paymentOrder?: any; message: string }> {
     console.log('[ApiService][Payment] Creating payment order:', paymentData);
-    await simulateNetworkDelay();
 
     try {
+      if (!API_CONFIG.isMockMode) {
+        const response = await apiFetch<any>('/api/payments', {
+          method: 'POST',
+          body: paymentData
+        });
+
+        if (response.success && response.data) {
+          return {
+            success: true,
+            paymentOrder: response.data,
+            message: response.message || '支付订单创建成功'
+          };
+        }
+        return { success: false, message: response.message || '创建失败' };
+      }
+
+      console.log('[ApiService][Payment] Mock mode: Using localStorage');
+      await simulateNetworkDelay();
+
       const payments = loadData<any>(STORAGE_KEYS.PAYMENTS);
       
       const newPayment = {
@@ -1034,9 +1474,20 @@ export const paymentService = {
 
   async processPayment(paymentId: string, paymentMethod: string): Promise<{ success: boolean; message: string }> {
     console.log('[ApiService][Payment] Processing payment:', paymentId, 'method:', paymentMethod);
-    await simulateNetworkDelay();
 
     try {
+      if (!API_CONFIG.isMockMode) {
+        const response = await apiFetch(`/api/payments/${paymentId}/pay`, {
+          method: 'POST',
+          body: { paymentMethod }
+        });
+
+        return { success: response.success, message: response.message || (response.success ? '支付成功' : '支付失败') };
+      }
+
+      console.log('[ApiService][Payment] Mock mode: Using localStorage');
+      await simulateNetworkDelay();
+
       const payments = loadData<any>(STORAGE_KEYS.PAYMENTS);
       const paymentIndex = payments.findIndex(p => p.id === paymentId);
 
@@ -1070,9 +1521,27 @@ export const paymentService = {
 
   async settlePayment(orderId: string, commissionRate: number = 0.05): Promise<{ success: boolean; settlement?: any; message: string }> {
     console.log('[ApiService][Payment] Settling payment for order:', orderId);
-    await simulateNetworkDelay();
 
     try {
+      if (!API_CONFIG.isMockMode) {
+        const response = await apiFetch<any>(`/api/payments/settle/${orderId}`, {
+          method: 'POST',
+          body: { commissionRate }
+        });
+
+        if (response.success && response.data) {
+          return {
+            success: true,
+            settlement: response.data,
+            message: response.message || '结算完成'
+          };
+        }
+        return { success: false, message: response.message || '结算失败' };
+      }
+
+      console.log('[ApiService][Payment] Mock mode: Using localStorage');
+      await simulateNetworkDelay();
+
       const orders = loadData<Order>(STORAGE_KEYS.ORDERS);
       const order = orders.find(o => o.id === orderId);
 

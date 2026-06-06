@@ -1,50 +1,55 @@
 import type { ReturnRequest } from '@/types/order';
+import { returnService, API_CONFIG } from '@/services/apiService';
 
-const STORAGE_KEY = 'gb2c_returns';
 const SELLER_TIMEOUT_HOURS = 72;
-
-const loadReturns = (): ReturnRequest[] => {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY);
-    return data ? JSON.parse(data) : [];
-  } catch (error) {
-    console.error('[ReturnEngine] Failed to load returns from localStorage:', error);
-    return [];
-  }
-};
-
-const saveReturns = (returns: ReturnRequest[]): void => {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(returns));
-    console.log('[ReturnEngine] Returns saved to localStorage successfully, count:', returns.length);
-  } catch (error) {
-    console.error('[ReturnEngine] Failed to save returns to localStorage:', error);
-    throw new Error('保存退货数据失败');
-  }
-};
 
 const generateReturnId = (): string => {
   return 'ret_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 };
 
-export const createReturnRequest = (
+export const createReturnRequest = async (
   orderId: string,
   orderNo: string,
   productId: string,
   productName: string,
   productImage: string,
-  _skuId: string,
-  _skuSpec: string,
-  _quantity: number,
+  skuId: string,
+  skuSpec: string,
+  quantity: number,
   reason: string,
   description: string,
   images: string[],
-  _buyerId: string,
-  _buyerName: string,
-  _sellerId: string,
+  buyerId: string,
+  buyerName: string,
+  sellerId: string,
   refundAmount: number
-): ReturnRequest => {
+): Promise<ReturnRequest> => {
   console.log('[ReturnEngine] Creating return request:', { orderId, orderNo, productId, productName, reason, refundAmount });
+
+  if (!API_CONFIG.isMockMode) {
+    const result = await returnService.createReturnRequest({
+      orderId,
+      orderNo,
+      productId,
+      productName,
+      productImage,
+      skuId,
+      skuSpec,
+      quantity,
+      reason,
+      description,
+      images,
+      buyerId,
+      buyerName,
+      sellerId,
+      refundAmount
+    });
+    
+    if (result.success && result.returnRequest) {
+      return result.returnRequest;
+    }
+    throw new Error(result.message || '创建退货申请失败');
+  }
 
   const now = new Date();
   const sellerDeadline = new Date(now.getTime() + SELLER_TIMEOUT_HOURS * 60 * 60 * 1000);
@@ -66,11 +71,7 @@ export const createReturnRequest = (
     createdAt: now.toISOString()
   };
 
-  const returns = loadReturns();
-  returns.push(returnRequest);
-  saveReturns(returns);
-
-  console.log('[ReturnEngine] Return request created successfully:', returnRequest);
+  console.log('[ReturnEngine] Return request created successfully (mock mode):', returnRequest);
   return returnRequest;
 };
 

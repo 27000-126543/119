@@ -60,10 +60,10 @@ const OrdersPage: React.FC = () => {
     }, 1000);
   });
 
-  const loadOrders = () => {
+  const loadOrders = async () => {
     setLoading(true);
     try {
-      const result = getOrders(orderStatus === 'all' ? undefined : orderStatus);
+      const result = await getOrders(orderStatus === 'all' ? undefined : orderStatus);
       setOrders(result);
       console.log('[OrdersPage] Orders loaded:', result.length);
     } catch (e) {

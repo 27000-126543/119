@@ -2,10 +2,10 @@ import { create } from 'zustand';
 import type { Order, ReturnRequest } from '@/types/order';
 import type { SplitOrderResult } from '@/types/warehouse';
 import { splitOrderByWarehouse, reserveStock } from '@/services/orderSplitEngine';
-import * as returnEngine from '@/services/returnEngine';
 import { useUserStore } from '@/store/useUserStore';
 import { useCartStore } from '@/store/useCartStore';
-import { calculateMemberLevel } from '@/services/memberService';
+import { calculateMemberLevel, calculateDiscount, calculatePoints } from '@/services/memberService';
+import { orderService, returnService, userService } from '@/services/apiService';
 import type { CartItem } from '@/types/order';
 
 interface OrderState {
@@ -17,12 +17,12 @@ interface OrderState {
   error: string | null;
   
   createOrdersFromCart: (countryCode: string, address: any, shippingMethod: string) => Promise<Order[]>;
-  getOrders: (status?: string) => Order[];
-  getOrderDetail: (orderId: string) => Order | null;
+  getOrders: (status?: string) => Promise<Order[]>;
+  getOrderDetail: (orderId: string) => Promise<Order | null>;
   cancelOrder: (orderId: string) => Promise<boolean>;
   confirmReceipt: (orderId: string) => Promise<boolean>;
   createReturnRequest: (orderId: string, orderNo: string, productId: string, productName: string, productImage: string, skuId: string, skuSpec: string, quantity: number, reason: string, description: string, images: string[], buyerId: string, buyerName: string, sellerId: string, refundAmount: number) => Promise<ReturnRequest | null>;
-  getReturnRequests: () => ReturnRequest[];
+  getReturnRequests: () => Promise<ReturnRequest[]>;
   previewSplitOrder: (items: CartItem[], countryCode: string) => SplitOrderResult[];
   clearSplitResults: () => void;
   setCurrentOrder: (order: Order | null) => void;
@@ -154,22 +154,34 @@ export const useOrderStore = create<OrderState>((set, get) => ({
     }
   },
 
-  getOrders: (status) => {
-    const { orders } = get();
-    const storedOrders = JSON.parse(localStorage.getItem('gb2c_orders') || '[]');
-    const allOrders = [...orders, ...storedOrders];
-    
-    if (status) {
-      return allOrders.filter(o => o.status === status);
+  getOrders: async (status) => {
+    const { user } = useUserStore.getState();
+    if (!user) return [];
+
+    try {
+      const result = await orderService.getOrders(user.id, status);
+      if (result.success) {
+        set({ orders: result.orders });
+        return result.orders;
+      }
+      return [];
+    } catch (error) {
+      console.error('[OrderStore] Failed to get orders:', error);
+      return [];
     }
-    return allOrders;
   },
 
-  getOrderDetail: (orderId) => {
-    const { orders } = get();
-    const storedOrders = JSON.parse(localStorage.getItem('gb2c_orders') || '[]');
-    const allOrders = [...orders, ...storedOrders];
-    return allOrders.find(o => o.id === orderId) || null;
+  getOrderDetail: async (orderId) => {
+    try {
+      const result = await orderService.getOrderDetail(orderId);
+      if (result.success && result.order) {
+        return result.order;
+      }
+      return null;
+    } catch (error) {
+      console.error('[OrderStore] Failed to get order detail:', error);
+      return null;
+    }
   },
 
   cancelOrder: async (orderId) => {
@@ -177,19 +189,16 @@ export const useOrderStore = create<OrderState>((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      const storedOrders = JSON.parse(localStorage.getItem('gb2c_orders') || '[]');
-      const updatedOrders = storedOrders.map((o: Order) => 
-        o.id === orderId ? { ...o, status: 'cancelled', statusText: '已取消' } : o
-      );
-      localStorage.setItem('gb2c_orders', JSON.stringify(updatedOrders));
-      
-      set({ 
-        orders: updatedOrders.filter((o: Order) => get().orders.some(existing => existing.id === o.id)),
-        isLoading: false 
-      });
-
-      console.log('[OrderStore] Order cancelled successfully:', orderId);
-      return true;
+      const result = await orderService.cancelOrder(orderId);
+      if (result.success) {
+        const { user } = useUserStore.getState();
+        if (user) {
+          await get().getOrders();
+        }
+        set({ isLoading: false });
+        return true;
+      }
+      throw new Error(result.message);
     } catch (error: any) {
       console.error('[OrderStore] Failed to cancel order:', error);
       set({ error: error.message, isLoading: false });
@@ -202,48 +211,30 @@ export const useOrderStore = create<OrderState>((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      const storedOrders = JSON.parse(localStorage.getItem('gb2c_orders') || '[]');
-      const order = storedOrders.find((o: Order) => o.id === orderId);
+      const result = await orderService.confirmOrderReceipt(orderId);
+      if (!result.success) {
+        throw new Error(result.message);
+      }
+
+      const orderDetail = await orderService.getOrderDetail(orderId);
+      const order = orderDetail.order;
       
-      if (!order) {
-        throw new Error('订单不存在');
-      }
-
-      const updatedOrder = {
-        ...order,
-        status: 'completed' as const,
-        statusText: '已完成',
-        paymentStatus: 'paid' as const,
-        completedAt: new Date().toISOString()
-      };
-
-      const updatedOrders = storedOrders.map((o: Order) => 
-        o.id === orderId ? updatedOrder : o
-      );
-      localStorage.setItem('gb2c_orders', JSON.stringify(updatedOrders));
-
-      const { user, updateMemberLevel } = useUserStore.getState();
-      if (user) {
-        updateMemberLevel(order.total);
-        
-        const newLevelInfo = calculateMemberLevel(user.totalTradeAmount + order.total);
-        useUserStore.setState({
-          user: {
-            ...user,
-            totalTradeAmount: user.totalTradeAmount + order.total,
-            memberLevel: newLevelInfo.level,
-            memberLevelText: newLevelInfo.config.name,
-            nextLevelAmount: newLevelInfo.nextLevelAmount,
-            levelProgress: newLevelInfo.progress
+      if (order) {
+        const { user } = useUserStore.getState();
+        if (user) {
+          const updateResult = await userService.updateMemberLevel(user.id, order.total);
+          if (updateResult.success && updateResult.user) {
+            useUserStore.setState({ user: updateResult.user });
           }
-        });
+        }
       }
 
-      set({ 
-        orders: updatedOrders.filter((o: Order) => get().orders.some(existing => existing.id === o.id)),
-        isLoading: false 
-      });
+      const { user } = useUserStore.getState();
+      if (user) {
+        await get().getOrders();
+      }
 
+      set({ isLoading: false });
       console.log('[OrderStore] Order receipt confirmed and settled:', orderId);
       return true;
     } catch (error: any) {
@@ -258,7 +249,7 @@ export const useOrderStore = create<OrderState>((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      const returnRequest = returnEngine.createReturnRequest(
+      const result = await returnService.createReturnRequest({
         orderId,
         orderNo,
         productId,
@@ -274,15 +265,19 @@ export const useOrderStore = create<OrderState>((set, get) => ({
         buyerName,
         sellerId,
         refundAmount
-      );
+      });
+
+      if (!result.success || !result.returnRequest) {
+        throw new Error(result.message);
+      }
 
       set({ 
-        returnRequests: [...get().returnRequests, returnRequest],
+        returnRequests: [...get().returnRequests, result.returnRequest],
         isLoading: false 
       });
 
-      console.log('[OrderStore] Return request created successfully:', returnRequest.id);
-      return returnRequest;
+      console.log('[OrderStore] Return request created successfully:', result.returnRequest.id);
+      return result.returnRequest;
     } catch (error: any) {
       console.error('[OrderStore] Failed to create return request:', error);
       set({ error: error.message, isLoading: false });
@@ -290,10 +285,21 @@ export const useOrderStore = create<OrderState>((set, get) => ({
     }
   },
 
-  getReturnRequests: () => {
-    const { returnRequests } = get();
-    const storedReturns = JSON.parse(localStorage.getItem('gb2c_returns') || '[]');
-    return [...returnRequests, ...storedReturns];
+  getReturnRequests: async () => {
+    const { user } = useUserStore.getState();
+    if (!user) return [];
+
+    try {
+      const result = await returnService.getReturnRequests(user.id);
+      if (result.success) {
+        set({ returnRequests: result.returns });
+        return result.returns;
+      }
+      return [];
+    } catch (error) {
+      console.error('[OrderStore] Failed to get return requests:', error);
+      return [];
+    }
   },
 
   setCurrentOrder: (order) => {

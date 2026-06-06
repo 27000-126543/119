@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { PaymentOrder, PaymentResult, Settlement } from '@/types/payment';
-import { createPaymentOrder as createPaymentOrderEngine, processPayment as processPaymentEngine, confirmReceiptAndSettle } from '@/services/paymentEngine';
+import { paymentService, orderService } from '@/services/apiService';
 import { useOrderStore } from '@/store/useOrderStore';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -36,19 +36,25 @@ export const usePaymentStore = create<PaymentState>((set, get) => ({
         throw new Error('请先登录');
       }
 
-      const paymentOrder = await createPaymentOrderEngine(orderIds, user.id, totalAmount, currency);
-      
-      const storedPayments = JSON.parse(localStorage.getItem('gb2c_payments') || '[]');
-      localStorage.setItem('gb2c_payments', JSON.stringify([...storedPayments, paymentOrder]));
+      const result = await paymentService.createPaymentOrder({
+        orderIds,
+        buyerId: user.id,
+        totalAmount,
+        currency
+      });
+
+      if (!result.success || !result.paymentOrder) {
+        throw new Error(result.message || '创建支付订单失败');
+      }
 
       set({ 
-        paymentOrders: [...get().paymentOrders, paymentOrder],
-        currentPayment: paymentOrder,
+        paymentOrders: [...get().paymentOrders, result.paymentOrder],
+        currentPayment: result.paymentOrder,
         isProcessing: false 
       });
 
-      console.log('[PaymentStore] Payment order created:', paymentOrder.id);
-      return paymentOrder;
+      console.log('[PaymentStore] Payment order created:', result.paymentOrder.id);
+      return result.paymentOrder;
     } catch (error: any) {
       console.error('[PaymentStore] Failed to create payment order:', error);
       set({ error: error.message, isProcessing: false });
@@ -61,46 +67,28 @@ export const usePaymentStore = create<PaymentState>((set, get) => ({
     set({ isProcessing: true, error: null });
 
     try {
-      const result = await processPaymentEngine(paymentOrderId, paymentMethod);
+      const result = await paymentService.processPayment(paymentOrderId, paymentMethod);
       
       if (result.success) {
-        const storedPayments = JSON.parse(localStorage.getItem('gb2c_payments') || '[]');
-        const updatedPayments = storedPayments.map((p: PaymentOrder) => 
-          p.id === paymentOrderId ? {
-            ...p,
-            status: 'paid' as const,
-            paymentMethod,
-            thirdPartyTransactionId: result.transactionId,
-            paidAt: result.paidAt
-          } : p
-        );
-        localStorage.setItem('gb2c_payments', JSON.stringify(updatedPayments));
-
-        const { orders } = useOrderStore.getState();
-        const storedOrders = JSON.parse(localStorage.getItem('gb2c_orders') || '[]');
-        
-        const payment = updatedPayments.find((p: PaymentOrder) => p.id === paymentOrderId);
-        if (payment) {
-          const updatedOrders = storedOrders.map((o: any) => 
-            payment.orderIds.includes(o.id) ? {
-              ...o,
-              status: 'pending_shipment',
-              statusText: '待发货',
-              paymentStatus: 'paid',
-              paymentMethod,
-              paidAt: result.paidAt
-            } : o
-          );
-          localStorage.setItem('gb2c_orders', JSON.stringify(updatedOrders));
+        const { user } = useUserStore.getState();
+        if (user) {
+          await useOrderStore.getState().getOrders();
         }
 
         set({ 
-          paymentOrders: updatedPayments,
           isProcessing: false 
         });
 
-        console.log('[PaymentStore] Payment processed successfully:', result.transactionId);
-        return result;
+        console.log('[PaymentStore] Payment processed successfully');
+        return {
+          success: true,
+          paymentOrderId,
+          transactionId: `TXN_${Date.now()}`,
+          amount: 0,
+          currency: 'CNY',
+          paidAt: new Date().toISOString(),
+          message: result.message
+        };
       } else {
         throw new Error(result.message || '支付失败');
       }
@@ -116,19 +104,16 @@ export const usePaymentStore = create<PaymentState>((set, get) => ({
     set({ isProcessing: true, error: null });
 
     try {
-      const settlement = await confirmReceiptAndSettle(orderId);
+      const result = await paymentService.settlePayment(orderId, 0.05);
       
-      if (settlement) {
-        const storedSettlements = JSON.parse(localStorage.getItem('gb2c_settlements') || '[]');
-        localStorage.setItem('gb2c_settlements', JSON.stringify([...storedSettlements, settlement]));
-
+      if (result.success && result.settlement) {
         set({ 
-          settlements: [...get().settlements, settlement],
+          settlements: [...get().settlements, result.settlement],
           isProcessing: false 
         });
 
-        console.log('[PaymentStore] Settlement completed:', settlement.id);
-        return settlement;
+        console.log('[PaymentStore] Settlement completed:', result.settlement.id);
+        return result.settlement;
       }
 
       set({ isProcessing: false });
@@ -140,21 +125,18 @@ export const usePaymentStore = create<PaymentState>((set, get) => ({
     }
   },
 
-  getPaymentOrders: () => {
-    const { paymentOrders } = get();
-    const storedPayments = JSON.parse(localStorage.getItem('gb2c_payments') || '[]');
-    return [...paymentOrders, ...storedPayments];
+  getPaymentOrders: async () => {
+    const { user } = useUserStore.getState();
+    if (!user) return [];
+    return get().paymentOrders;
   },
 
-  getSettlements: (sellerId) => {
+  getSettlements: async (sellerId) => {
     const { settlements } = get();
-    const storedSettlements = JSON.parse(localStorage.getItem('gb2c_settlements') || '[]');
-    const allSettlements = [...settlements, ...storedSettlements];
-    
     if (sellerId) {
-      return allSettlements.filter(s => s.sellerId === sellerId);
+      return settlements.filter(s => s.sellerId === sellerId);
     }
-    return allSettlements;
+    return settlements;
   },
 
   clearCurrentPayment: () => {
